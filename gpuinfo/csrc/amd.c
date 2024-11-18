@@ -379,7 +379,7 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     obj->sms_count = deviceProp.multiProcessorCount;
     obj->sm_threads = deviceProp.maxThreadsPerMultiProcessor;
     // obj->sm_shared_memory = deviceProp.sharedMemPerMultiprocessor;
-    obj->sm_shared_memory = deviceProp.maxSharedMemoryPerMultiProcessor;
+    obj->sm_shared_memory = deviceProp.maxSharedMemoryPerMultiProcessor; // hip specific, seems to make more sense
     obj->sm_registers = deviceProp.regsPerMultiprocessor;
     obj->sm_blocks = deviceProp.maxBlocksPerMultiProcessor;
     obj->block_threads = deviceProp.maxThreadsPerBlock;

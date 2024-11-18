@@ -42,7 +42,7 @@ static PyTypeObject GpuPropType = {
     .tp_doc = PyDoc_STR("A structure holding device properties of a GPU."),
     .tp_basicsize = sizeof(GpuProp),
     .tp_itemsize = 0,
-    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = PyType_GenericNew,
     .tp_members = GpuPropMembers,
 };
