@@ -7,9 +7,9 @@
 
 typedef struct {
     PyObject_HEAD
-    char provider[8];
+    const char* provider;
     int index;
-    char name[256];
+    const char* name;
     int major;
     int minor;
     size_t total_memory;
@@ -26,6 +26,9 @@ typedef struct {
     char concurrent_kernels;
     int async_engines_count;
     char cooperative;
+
+    char _provider_storage[8];
+    char _name_storage[256];
 } GpuProp;
 
 

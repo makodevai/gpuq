@@ -13,10 +13,10 @@ from pathlib import Path
 
 package_name = 'gpuinfo'
 description = ''
-author = 'A2Labs'
-author_email = 'lukasz@a2labs.ai'
-url = 'https://github.com/a2labs-ai/gpuinfo'
-download_url = 'https://github.com/a2labs-ai/gpuinfo'
+author = 'Mako'
+author_email = 'lukasz@mako-dev.com'
+url = 'https://github.com/makodevai/gpuinfo'
+download_url = 'https://github.com/makodevai/gpuinfo'
 data_files = {}
 
 version_file = Path(__file__).parent.joinpath(package_name, 'version.py')
@@ -68,7 +68,7 @@ setup(name=package_name,
       download_url=download_url,
       long_description=long_desc,
       long_description_content_type=long_desc_type,
-      python_requires='>=3.6.0',
+      python_requires='>=3.10.0',
       setup_requires=[
           'GitPython'
       ],
@@ -81,6 +81,6 @@ setup(name=package_name,
           'sdist': sdist_maybe_inplace
       },
       ext_modules=[
-          Extension("gpuinfo.C", ["gpuinfo/csrc/gpuinfo.c", "gpuinfo/csrc/amd.c", "gpuinfo/csrc/cuda.c"])
+          Extension("gpuinfo.C", ["gpuinfo/csrc/gpuinfo.c", "gpuinfo/csrc/amd.c", "gpuinfo/csrc/cuda.c"], extra_compile_args=['-O0', '-g'])
       ]
 )

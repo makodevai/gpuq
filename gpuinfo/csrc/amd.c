@@ -58,19 +58,13 @@ typedef struct hipDeviceProp_t {
     int regsPerBlock;                 ///< Registers per block.
     int warpSize;                     ///< Warp size.
     size_t memPitch;                  ///< Maximum pitch in bytes allowed by memory copies
-                                      ///< pitched memory
     int maxThreadsPerBlock;           ///< Max work items per work group or workgroup max size.
     int maxThreadsDim[3];             ///< Max number of threads in each dimension (XYZ) of a block.
     int maxGridSize[3];               ///< Max grid dimensions (XYZ).
     int clockRate;                    ///< Max clock frequency of the multiProcessors in khz.
     size_t totalConstMem;             ///< Size of shared constant memory region on the device
-                                      ///< (in bytes).
     int major;  ///< Major compute capability.  On HCC, this is an approximation and features may
-                ///< differ from CUDA CC.  See the arch feature flags for portable ways to query
-                ///< feature caps.
     int minor;  ///< Minor compute capability.  On HCC, this is an approximation and features may
-                ///< differ from CUDA CC.  See the arch feature flags for portable ways to query
-                ///< feature caps.
     size_t textureAlignment;       ///< Alignment requirement for textures
     size_t texturePitchAlignment;  ///< Pitch alignment requirement for texture references bound to
     int deviceOverlap;             ///< Deprecated. Use asyncEngineCount instead
@@ -87,7 +81,6 @@ typedef struct hipDeviceProp_t {
     int maxTexture2DLinear[3];  ///< Maximum 2D tex dimensions if tex are bound to pitched memory
     int maxTexture2DGather[2];  ///< Maximum 2D tex dimensions if gather has to be performed
     int maxTexture3D[3];  ///< Maximum dimensions (width, height, depth) of 3D images, in image
-                          ///< elements
     int maxTexture3DAlt[3];           ///< Maximum alternate 3D texture dims
     int maxTextureCubemap;            ///< Maximum cubemap texture dims
     int maxTexture1DLayered[2];       ///< Maximum number of elements in 1D array images
@@ -125,38 +118,27 @@ typedef struct hipDeviceProp_t {
     int hostNativeAtomicSupported;         ///< Link between host and device supports native atomics
     int singleToDoublePrecisionPerfRatio;  ///< Deprecated. CUDA only.
     int pageableMemoryAccess;              ///< Device supports coherently accessing pageable memory
-                                           ///< without calling hipHostRegister on it
     int concurrentManagedAccess;  ///< Device can coherently access managed memory concurrently with
-                                  ///< the CPU
     int computePreemptionSupported;         ///< Is compute preemption supported on the device
     int canUseHostPointerForRegisteredMem;  ///< Device can access host registered memory with same
-                                            ///< address as the host
     int cooperativeLaunch;                  ///< HIP device supports cooperative launch
     int cooperativeMultiDeviceLaunch;       ///< HIP device supports cooperative launch on multiple
-                                            ///< devices
-    size_t
-        sharedMemPerBlockOptin;  ///< Per device m ax shared mem per block usable by special opt in
+    size_t sharedMemPerBlockOptin;  ///< Per device m ax shared mem per block usable by special opt in
     int pageableMemoryAccessUsesHostPageTables;  ///< Device accesses pageable memory via the host's
-                                                 ///< page tables
     int directManagedMemAccessFromHost;  ///< Host can directly access managed memory on the device
-                                         ///< without migration
     int maxBlocksPerMultiProcessor;      ///< Max number of blocks on CU
     int accessPolicyMaxWindowSize;       ///< Max value of access policy window
     size_t reservedSharedMemPerBlock;    ///< Shared memory reserved by driver per block
     int hostRegisterSupported;           ///< Device supports hipHostRegister
     int sparseHipArraySupported;         ///< Indicates if device supports sparse hip arrays
     int hostRegisterReadOnlySupported;   ///< Device supports using the hipHostRegisterReadOnly flag
-                                         ///< with hipHostRegistger
     int timelineSemaphoreInteropSupported;  ///< Indicates external timeline semaphore support
     int memoryPoolsSupported;  ///< Indicates if device supports hipMallocAsync and hipMemPool APIs
     int gpuDirectRDMASupported;                    ///< Indicates device support of RDMA APIs
     unsigned int gpuDirectRDMAFlushWritesOptions;  ///< Bitmask to be interpreted according to
-                                                   ///< hipFlushGPUDirectRDMAWritesOptions
     int gpuDirectRDMAWritesOrdering;               ///< value of hipGPUDirectRDMAWritesOrdering
-    unsigned int
-        memoryPoolSupportedHandleTypes;  ///< Bitmask of handle types support with mempool based IPC
+    unsigned int memoryPoolSupportedHandleTypes;  ///< Bitmask of handle types support with mempool based IPC
     int deferredMappingHipArraySupported;  ///< Device supports deferred mapping HIP arrays and HIP
-                                           ///< mipmapped arrays
     int ipcEventSupported;                 ///< Device supports IPC events
     int clusterLaunch;                     ///< Device supports cluster launch
     int unifiedFunctionPointers;           ///< Indicates device supports unified function pointers
@@ -370,9 +352,9 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
         return (int)e;
     }
 
-    strcpy(obj->provider, "hip");
+    strcpy(obj->_provider_storage, "HIP");
     obj->index = index;
-    memcpy(obj->name, deviceProp.name, 256);
+    memcpy(obj->_name_storage, deviceProp.name, 256);
     obj->major = deviceProp.major;
     obj->minor = deviceProp.minor;
     obj->total_memory = deviceProp.totalGlobalMem;
@@ -392,4 +374,15 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     obj->cooperative = (char)deviceProp.cooperativeLaunch;
 
     return 0;
+}
+
+
+void amdCleanup() {
+    if (hip_runtime_dl) {
+        dlclose(hip_runtime_dl);
+    }
+
+    hip_runtime_dl = NULL;
+    device_count_fn = NULL;
+    device_props_fn = NULL;
 }

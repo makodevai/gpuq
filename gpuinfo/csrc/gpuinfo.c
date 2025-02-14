@@ -1,6 +1,19 @@
 #include "types.h"
 #include <stddef.h>
 
+#include "patchlevel.h"
+
+// for Python <3.13
+#if PY_VERSION_HEX < 0x030d0000
+#include "structmember.h"
+#define Py_T_UINT T_UINT
+#define Py_T_ULONG T_ULONG
+#define Py_T_ULONGLONG T_ULONGULONG
+#define Py_T_STRING T_STRING
+#define Py_T_INT T_INT
+#define Py_T_BOOL T_BOOL
+#endif
+
 #if SIZE_MAX == UINT_MAX
   #define Py_T_SIZET Py_T_UINT
 #elif SIZE_MAX == ULONG_MAX
@@ -12,10 +25,13 @@
 #endif
 
 
+
+
+
 static PyMemberDef GpuPropMembers[] = {
-    {"provider", Py_T_STRING_INPLACE, offsetof(GpuProp, provider), 0, "GPU provider (cuda, hip, etc.)"},
+    {"provider", Py_T_STRING, offsetof(GpuProp, provider), 0, "GPU provider (cuda, hip, etc.)"},
     {"index", Py_T_INT, offsetof(GpuProp, index), 0, "GPU index"},
-    {"name", Py_T_STRING_INPLACE, offsetof(GpuProp, name), 0, "GPU model name"},
+    {"name", Py_T_STRING, offsetof(GpuProp, name), 0, "GPU model name"},
     {"major", Py_T_INT, offsetof(GpuProp, major), 0, "Model major number"},
     {"minor", Py_T_INT, offsetof(GpuProp, minor), 0, "Model minor number"},
     {"total_memory", Py_T_SIZET, offsetof(GpuProp, total_memory), 0, "Total global memory (in bytes)"},
@@ -123,6 +139,9 @@ gpuinfo_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     GpuProp* obj = (GpuProp*)PyObject_CallNoArgs((PyObject*)&GpuPropType);
     if (obj == NULL)
         return NULL;
+
+    obj->name = &obj->_name_storage[0];
+    obj->provider = &obj->_provider_storage[0];
 
     int status = 0;
     if (gpu_id < cudaDevices) {
