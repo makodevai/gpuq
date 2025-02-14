@@ -1,4 +1,4 @@
-version = '0.0.1.dev0'
+version = '1.0.0'
 repo = 'unknown'
 commit = 'unknown'
 has_repo = False

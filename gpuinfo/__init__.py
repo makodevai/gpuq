@@ -26,12 +26,16 @@ class Properties():
         self.cobj = cobj
 
     @property
+    def index(self):
+        return self.cobj.index
+
+    @property
     def provider(self):
         return Provider[self.cobj.provider]
 
     @property
-    def index(self):
-        return self.cobj.index
+    def subindex(self):
+        return self.cobj.subindex
 
     @property
     def name(self):
@@ -101,10 +105,11 @@ class Properties():
     def cooperative(self):
         return self.cobj.cooperative
 
-    def asdict(self):
-        return {
-            'provider': self.provider,
+    def asdict(self, strip_index=False):
+        ret = {
             'index': self.index,
+            'provider': self.provider,
+            'subindex': self.subindex,
             'name': self.name,
             'major': self.major,
             'minor': self.minor,
@@ -124,11 +129,32 @@ class Properties():
             'cooperative': self.cooperative
         }
 
+        if strip_index:
+            del ret['index']
+            del ret['subindex']
+
+        return ret
+
+    def __eq__(self, other):
+        ''' Return True if self and other are equivalent GPUs.
+
+            If you want to check if two GPus are the same physical devices,
+            simply compare their indices.
+        '''
+        if not isinstance(other, Properties):
+            return False
+        if self.index == other.index:
+            return True
+        return self.asdict(strip_index=True) == other.asdict(strip_index=True)
+
     def __str__(self):
-        props = self.asdict()
-        provider = props.pop('provider')
-        index = props.pop('index')
-        return f'{type(self).__module__}.{type(self).__qualname__}(provider={provider!r}, idx={index}):\n    ' + '\n    '.join(f'{key}: {value}' for key, value in props.items()) + '\n'
+        props = self.asdict(strip_index=True)
+        del props['provider']
+        del props['name']
+        return self.__repr__() + '{\n    ' + '\n    '.join(f'{key}: {value}' for key, value in props.items()) + '\n}'
+
+    def __repr__(self):
+        return f'{type(self).__module__}.{type(self).__qualname__}({self.index} -> {self.provider.name}[{self.subindex}], {self.name!r})'
 
 
 def query(provider: Provider = Provider.ANY, required: Provider = None) -> list[Properties]:

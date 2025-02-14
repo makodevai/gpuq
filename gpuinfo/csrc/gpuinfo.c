@@ -29,8 +29,9 @@
 
 
 static PyMemberDef GpuPropMembers[] = {
+    {"index", Py_T_INT, offsetof(GpuProp, index), 0, "Global GPU index (across all providers)"},
     {"provider", Py_T_STRING, offsetof(GpuProp, provider), 0, "GPU provider (cuda, hip, etc.)"},
-    {"index", Py_T_INT, offsetof(GpuProp, index), 0, "GPU index"},
+    {"subindex", Py_T_INT, offsetof(GpuProp, subindex), 0, "GPU provider index"},
     {"name", Py_T_STRING, offsetof(GpuProp, name), 0, "GPU model name"},
     {"major", Py_T_INT, offsetof(GpuProp, major), 0, "Model major number"},
     {"minor", Py_T_INT, offsetof(GpuProp, minor), 0, "Model minor number"},
@@ -140,6 +141,7 @@ gpuinfo_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     if (obj == NULL)
         return NULL;
 
+    obj->index = gpu_id;
     obj->name = &obj->_name_storage[0];
     obj->provider = &obj->_provider_storage[0];
 
