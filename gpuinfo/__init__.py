@@ -174,7 +174,7 @@ class Properties():
     def asdict(self, strip_index=False):
         ret = {
             'ord': self.ord,
-            'provider': self.provider,
+            'provider': self.provider.name,
             'index': self.index,
             'system_index': self.system_index,
             'name': self.name,
