@@ -222,7 +222,7 @@ class Properties():
         return self.__repr__() + '{\n    ' + '\n    '.join(f'{key}: {value}' for key, value in props.items()) + '\n}'
 
     def __repr__(self):
-        return f'{type(self).__module__}.{type(self).__qualname__}({self.ord} -> {self.provider.name}[{self.system_index}={self.index}], {self.name!r})'
+        return f'{type(self).__module__}.{type(self).__qualname__}({self.provider.name}[{self.system_index} -> {self.index}], {self.name!r})'
 
 
 def query(provider: Provider = Provider.ANY, required: Provider = None, visible_only: bool = True) -> list[Properties]:
