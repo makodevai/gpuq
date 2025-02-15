@@ -197,7 +197,7 @@ class Properties():
         }
 
         if strip_index:
-            del ret['order']
+            del ret['ord']
             del ret['index']
             del ret['system_index']
 
