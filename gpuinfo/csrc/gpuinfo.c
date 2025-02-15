@@ -141,7 +141,7 @@ gpuinfo_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     if (obj == NULL)
         return NULL;
 
-    obj->index = gpu_id;
+    obj->ord = gpu_id;
     obj->name = &obj->_name_storage[0];
     obj->provider = &obj->_provider_storage[0];
 
