@@ -29,9 +29,9 @@
 
 
 static PyMemberDef GpuPropMembers[] = {
-    {"index", Py_T_INT, offsetof(GpuProp, index), 0, "Global GPU index (across all providers)"},
+    {"ord", Py_T_INT, offsetof(GpuProp, ord), 0, "GPU ordinal, across all devices and providers, specific to this package"},
     {"provider", Py_T_STRING, offsetof(GpuProp, provider), 0, "GPU provider (cuda, hip, etc.)"},
-    {"subindex", Py_T_INT, offsetof(GpuProp, subindex), 0, "GPU provider index"},
+    {"index", Py_T_INT, offsetof(GpuProp, index), 0, "GPU index for its provider, subject to *_VISIBLE_DEVICES"},
     {"name", Py_T_STRING, offsetof(GpuProp, name), 0, "GPU model name"},
     {"major", Py_T_INT, offsetof(GpuProp, major), 0, "Model major number"},
     {"minor", Py_T_INT, offsetof(GpuProp, minor), 0, "Model minor number"},

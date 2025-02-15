@@ -320,7 +320,7 @@ int cudaGetDeviceProps(int index, GpuProp* obj) {
     }
 
     strcpy(obj->_provider_storage, "CUDA");
-    obj->subindex = index;
+    obj->index = index;
     memcpy(obj->_name_storage, deviceProp.name, 256);
     obj->major = deviceProp.major;
     obj->minor = deviceProp.minor;

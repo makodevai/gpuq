@@ -7,9 +7,9 @@
 
 typedef struct {
     PyObject_HEAD
-    int index;
+    int ord;
     const char* provider;
-    int subindex;
+    int index;
     const char* name;
     int major;
     int minor;

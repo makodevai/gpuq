@@ -1,3 +1,5 @@
+import os
+from contextlib import contextmanager
 from enum import IntFlag, auto
 
 from .utils import add_module_properties, staticproperty
@@ -15,6 +17,56 @@ class Provider(IntFlag):
     ALL = CUDA|HIP
 
 
+@contextmanager
+def _save_visible(clear=True):
+    cuda = os.environ.get('CUDA_VISIBLE_DEVICES', None)
+    hip = os.environ.get('HIP_VISIBLE_DEVICES', None)
+
+    def _is_int(value, _prefix):
+        try:
+            value = int(value)
+            return True
+        except:
+            raise ValueError(f'{_prefix}_VISIBLE_DEVICES environment variable contains values that are not integer - this is currently not supported: {value!r}') from None
+
+    if cuda is not None:
+        parsed_cuda = { int(g) for g in cuda.split(',') if _is_int(g, 'CUDA') }
+        parsed_cuda = sorted(list(parsed_cuda))
+    else:
+        parsed_cuda = None
+
+    if hip is not None:
+        parsed_hip = { int(g) for g in hip.split(',') if _is_int(g, 'HIP') }
+        parsed_hip = sorted(list(parsed_hip))
+    else:
+        parsed_hip = parsed_cuda
+
+    if clear:
+        if cuda is not None:
+            del os.environ['CUDA_VISIBLE_DEVICES']
+        if hip is not None:
+            del os.environ['HIP_VISIBLE_DEVICES']
+
+    try:
+        yield { Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip }
+    finally:
+        if clear:
+            if cuda is not None:
+                os.environ['CUDA_VISIBLE_DEVICES'] = cuda
+            if hip is not None:
+                os.environ['HIP_VISIBLE_DEVICES'] = hip
+
+
+def _global_to_visible(system_index: int, visible: list[int]):
+    if visible is None:
+        return system_index
+
+    try:
+        return visible.index(system_index)
+    except ValueError:
+        return None
+
+
 _provider_query_map = {
     Provider.CUDA: C.hascuda,
     Provider.HIP: C.hasamd
@@ -22,24 +74,38 @@ _provider_query_map = {
 
 
 class Properties():
-    def __init__(self, cobj):
+    def __init__(self, cobj, local_index):
         self.cobj = cobj
+        self.local_index = local_index
 
     @property
-    def index(self):
-        return self.cobj.index
+    def ord(self):
+        return self.cobj.ord
 
     @property
     def provider(self):
         return Provider[self.cobj.provider]
 
     @property
-    def subindex(self):
-        return self.cobj.subindex
+    def index(self):
+        return self.local_index
+
+    @property
+    def system_index(self):
+        return self.cobj.index
+
+    @property
+    def is_visible(self):
+        return self.index is not None
 
     @property
     def name(self):
         return self.cobj.name
+
+    @property
+    def short_name(self):
+        from .short_names import short_names
+        return short_names.get(self.cobj.name, None)
 
     @property
     def major(self):
@@ -107,9 +173,10 @@ class Properties():
 
     def asdict(self, strip_index=False):
         ret = {
-            'index': self.index,
+            'ord': self.ord,
             'provider': self.provider,
-            'subindex': self.subindex,
+            'index': self.index,
+            'system_index': self.system_index,
             'name': self.name,
             'major': self.major,
             'minor': self.minor,
@@ -130,8 +197,9 @@ class Properties():
         }
 
         if strip_index:
+            del ret['order']
             del ret['index']
-            del ret['subindex']
+            del ret['system_index']
 
         return ret
 
@@ -154,10 +222,10 @@ class Properties():
         return self.__repr__() + '{\n    ' + '\n    '.join(f'{key}: {value}' for key, value in props.items()) + '\n}'
 
     def __repr__(self):
-        return f'{type(self).__module__}.{type(self).__qualname__}({self.index} -> {self.provider.name}[{self.subindex}], {self.name!r})'
+        return f'{type(self).__module__}.{type(self).__qualname__}({self.ord} -> {self.provider.name}[{self.index}={self.system_index}], {self.name!r})'
 
 
-def query(provider: Provider = Provider.ANY, required: Provider = None) -> list[Properties]:
+def query(provider: Provider = Provider.ANY, required: Provider = None, visible_only: bool = True) -> list[Properties]:
     ''' Return a list of all GPUs matching the provided criteria.
 
         ``provider`` should be a bitwise-or'ed mask of providers whose GPUs should
@@ -182,6 +250,11 @@ def query(provider: Provider = Provider.ANY, required: Provider = None) -> list[
         > The only exception to this rule is the ``required=True`` case, which
         > could be understood as "make sure at least one GPU is returned", while
         > taking into account the provided ``providers`` value.
+
+        If ``visible_only`` is True, any processing of GPU by function (including checking
+        for providers and GPUs as described above) will only consider GPUs that are visible
+        according to the relevant *_VISIBLE_DEVICES environmental variable. Otherwise
+        the variables are ignored and all GPUs are always considered.
     '''
     nonempty = False
     if required is True:
@@ -197,59 +270,79 @@ def query(provider: Provider = Provider.ANY, required: Provider = None) -> list[
                 if not _provider_query_map[p]():
                     raise RuntimeError(f'Provider {p.name} is required but the relevant runtime is missing from the system!')
 
-    num = C.count()
+    with _save_visible() as visible:
+        num = C.count()
 
-    if not num:
-        if required is not None or nonempty:
-            raise RuntimeError('No GPUs detected')
-        return []
+        if not num:
+            if required is not None or nonempty:
+                raise RuntimeError('No GPUs detected')
+            return []
 
-    ret = []
+        ret = []
 
-    for idx in range(num):
-        dev = C.get(idx)
-        prov = Provider[dev.provider]
-        if required is not None and prov & required:
-            required &= ~prov # mark the current provider as no longer required
+        for idx in range(num):
+            dev = C.get(idx)
+            prov = Provider[dev.provider]
 
-        if provider & prov:
-            ret.append(Properties(dev))
+            visible_set = visible.get(prov)
+            local_index = _global_to_visible(dev.index, visible_set)
+            if visible_only and local_index is None: # not visible
+                continue
 
-    if required:
-        missing = [p for p in Provider if p & required]
-        raise RuntimeError(f'GPUs of the following required providers could not be found: {missing}')
+            if required is not None and prov & required:
+                required &= ~prov # mark the current provider as no longer required
 
-    if not ret and nonempty:
-        raise RuntimeError('No suitable GPUs detected')
+            if provider & prov:
+                ret.append(Properties(dev, local_index))
 
-    return ret
+        if required:
+            missing = [p for p in Provider if p & required]
+            raise RuntimeError(f'GPUs of the following required providers could not be found: {missing}')
+
+        if not ret and nonempty:
+            raise RuntimeError('No suitable GPUs detected')
+
+        return ret
 
 
-def count(provider: Provider = Provider.ALL):
+def count(provider: Provider = Provider.ALL, visible_only: bool = True):
     ''' Return the overall amount of GPUs for the specified provider (by default all providers).
 
         ``providers`` can be a bitwise mask of valid providers.
+        if ``visible_only`` is True, return the number of matching GPUs that visible according to
+        *_VISIBLE_DEVICES environment variables. Otherwise the number of all GPUs matching the
+        criteria is returned.
     '''
     if provider == Provider.ANY or provider is None:
         provider = Provider.ALL
 
     if provider == Provider.ALL:
-        return C.count()
+        if visible_only:
+            return C.count()
+        else:
+            with _save_visible():
+                return C.count()
     else:
-        return len(query(provider=provider, required=None))
+        return len(query(provider=provider, required=None, visible_only=visible_only))
 
 
-def get(idx, provider: Provider = Provider.ALL):
+def get(idx, provider: Provider = Provider.ALL, visible_only: bool = True):
     ''' Return the ``idx``-th GPU from the list of GPus for the specified provider(s).
+        If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
+        environment variables are considered for indexing (see ``count``).
     '''
     if provider == Provider.ANY or provider is None:
         provider = Provider.ALL
 
-    if provider == Provider.ALL:
-        ret = C.get(idx)
-        return Properties(ret)
+    if provider == Provider.ALL and not visible_only:
+        with _save_visible() as visible:
+            ret = C.get(idx)
+            prov = Provider[ret.provider]
+            visible_set = visible,get(prov)
+            local_index = _global_to_visible(ret.index, visible_set)
+            return Properties(ret, local_index)
     else:
-        ret = query(provider=provider, required=None)
+        ret = query(provider=provider, required=None, visible_only=visible_only)
         if not ret:
             raise RuntimeError('No GPUs available')
         if idx < 0 or idx >= len(ret):
