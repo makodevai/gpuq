@@ -222,7 +222,7 @@ class Properties():
         return self.__repr__() + '{\n    ' + '\n    '.join(f'{key}: {value}' for key, value in props.items()) + '\n}'
 
     def __repr__(self):
-        return f'{type(self).__module__}.{type(self).__qualname__}({self.ord} -> {self.provider.name}[{self.index}={self.system_index}], {self.name!r})'
+        return f'{type(self).__module__}.{type(self).__qualname__}({self.ord} -> {self.provider.name}[{self.system_index}={self.index}], {self.name!r})'
 
 
 def query(provider: Provider = Provider.ANY, required: Provider = None, visible_only: bool = True) -> list[Properties]:
@@ -305,7 +305,7 @@ def query(provider: Provider = Provider.ANY, required: Provider = None, visible_
         return ret
 
 
-def count(provider: Provider = Provider.ALL, visible_only: bool = True):
+def count(provider: Provider = Provider.ALL, visible_only: bool = False):
     ''' Return the overall amount of GPUs for the specified provider (by default all providers).
 
         ``providers`` can be a bitwise mask of valid providers.
@@ -326,7 +326,7 @@ def count(provider: Provider = Provider.ALL, visible_only: bool = True):
         return len(query(provider=provider, required=None, visible_only=visible_only))
 
 
-def get(idx, provider: Provider = Provider.ALL, visible_only: bool = True):
+def get(idx, provider: Provider = Provider.ALL, visible_only: bool = False):
     ''' Return the ``idx``-th GPU from the list of GPus for the specified provider(s).
         If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
         environment variables are considered for indexing (see ``count``).
