@@ -67,9 +67,17 @@ def _global_to_visible(system_index: int, visible: list[int]):
         return None
 
 
+def hascuda():
+    return C.checkcuda() == 0
+
+
+def hasamd():
+    return C.checkamd() == 0
+
+
 _provider_query_map = {
-    Provider.CUDA: C.hascuda,
-    Provider.HIP: C.hasamd
+    Provider.CUDA: hascuda,
+    Provider.HIP: hasamd
 }
 
 
