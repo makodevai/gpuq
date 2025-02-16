@@ -79,96 +79,135 @@ class Properties():
         self.local_index = local_index
 
     @property
-    def ord(self):
+    def ord(self) -> int:
+        ''' Ordinal of the GPU, across all providers and devices. Specific to the gpuinfo package.
+        '''
         return self.cobj.ord
 
     @property
-    def provider(self):
+    def provider(self) -> str:
+        ''' Which runtime provides the GPU. Currently CUDA or HIP
+        '''
         return Provider[self.cobj.provider]
 
     @property
-    def index(self):
+    def index(self) -> (int | None):
+        ''' Index of the GPU as seen by the calling process. This can be affected by
+            various *_VISIBLE_DEVICES environment variables.
+
+            Can be ``None`` if the GPU is not visible by this process. Also see ``is_visible``
+            for more information.
+
+            This index is provider-specific.
+
+            > **Note:** visibility is determined at the moment of constructing the object and will not
+            > reflect any changes made later.
+        '''
         return self.local_index
 
     @property
-    def system_index(self):
+    def system_index(self) -> int:
+        ''' System-wide index of the GPU, i.e., its index when ignoring *_VISIBLE_DEVICES.
+
+            This index is provider-specific.
+
+            > **Note:** system-wide index is determined by temporarily removing *_VISIBLE_DEVICES
+            > variables.
+            > This might cause race conditions if the variables are also used/modified by other
+            > parts of the system at the same time. Please keep this in mind when using the package.
+        '''
         return self.cobj.index
 
     @property
-    def is_visible(self):
+    def is_visible(self) -> bool:
+        ''' Whether the GPU is visible by the current process, per the relevant *_VISIBLE_DEVICES
+            environment variables.
+
+            > **Note:** visibility is determined at the moment of constructing the object and will not
+            > reflect any changes made later.
+
+            > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
+            > when obtaining information about the GPU, to correctly report other properties.
+            > This might cause race conditions if the variables are also used/modified by other
+            > parts of the system at the same time. Please keep this in mind when using the package.
+        '''
         return self.index is not None
 
     @property
-    def name(self):
+    def name(self) -> str:
+        ''' Name of the GPU
+        '''
         return self.cobj.name
 
     @property
-    def short_name(self):
+    def short_name(self) -> (str | None):
+        ''' Short name of the GPU, if known. Otherwise None.
+        '''
         from .short_names import short_names
         return short_names.get(self.cobj.name, None)
 
     @property
-    def major(self):
+    def major(self) -> int:
         return self.cobj.major
 
     @property
-    def minor(self):
+    def minor(self) -> int:
         return self.cobj.minor
 
     @property
-    def total_memory(self):
+    def total_memory(self) -> int:
         return self.cobj.total_memory
 
     @property
-    def sms_count(self):
+    def sms_count(self) -> int:
         return self.cobj.sms_count
 
     @property
-    def sm_threads(self):
+    def sm_threads(self) -> int:
         return self.cobj.sm_threads
 
     @property
-    def sm_shared_memory(self):
+    def sm_shared_memory(self) -> int:
         return self.cobj.sm_shared_memory
 
     @property
-    def sm_registers(self):
+    def sm_registers(self) -> int:
         return self.cobj.sm_registers
 
     @property
-    def sm_blocks(self):
+    def sm_blocks(self) -> int:
         return self.cobj.sm_blocks
 
     @property
-    def block_threads(self):
+    def block_threads(self) -> int:
         return self.cobj.block_threads
 
     @property
-    def block_shared_memory(self):
+    def block_shared_memory(self) -> int:
         return self.cobj.block_shared_memory
 
     @property
-    def block_registers(self):
+    def block_registers(self) -> int:
         return self.cobj.block_registers
 
     @property
-    def warp_size(self):
+    def warp_size(self) -> int:
         return self.cobj.warp_size
 
     @property
-    def l2_cache_size(self):
+    def l2_cache_size(self) -> int:
         return self.cobj.l2_cache_size
 
     @property
-    def concurrent_kernels(self):
+    def concurrent_kernels(self) -> bool:
         return self.cobj.concurrent_kernels
 
     @property
-    def async_engines_count(self):
+    def async_engines_count(self) -> int:
         return self.cobj.async_engines_count
 
     @property
-    def cooperative(self):
+    def cooperative(self) -> bool:
         return self.cobj.cooperative
 
     def asdict(self, strip_index=False):
@@ -255,6 +294,11 @@ def query(provider: Provider = Provider.ANY, required: Provider = None, visible_
         for providers and GPUs as described above) will only consider GPUs that are visible
         according to the relevant *_VISIBLE_DEVICES environmental variable. Otherwise
         the variables are ignored and all GPUs are always considered.
+
+        > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
+        > when obtaining information about GPUs, regardless of ``visible_only`` argument.
+        > This might cause race conditions if the variables are also used/modified by other
+        > parts of the system at the same time. Please keep this in mind when using it.
     '''
     nonempty = False
     if required is True:
@@ -312,6 +356,11 @@ def count(provider: Provider = Provider.ALL, visible_only: bool = False):
         if ``visible_only`` is True, return the number of matching GPUs that visible according to
         *_VISIBLE_DEVICES environment variables. Otherwise the number of all GPUs matching the
         criteria is returned.
+
+        > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
+        > when obtaining information about GPUs, if ``visible_only`` is False.
+        > This might cause race conditions if the variables are also used/modified by other
+        > parts of the system at the same time. Please keep this in mind when using it.
     '''
     if provider == Provider.ANY or provider is None:
         provider = Provider.ALL
@@ -330,6 +379,11 @@ def get(idx, provider: Provider = Provider.ALL, visible_only: bool = False):
     ''' Return the ``idx``-th GPU from the list of GPus for the specified provider(s).
         If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
         environment variables are considered for indexing (see ``count``).
+
+        > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
+        > when obtaining information about GPUs, regardless of ``visible_only`` argument.
+        > This might cause race conditions if the variables are also used/modified by other
+        > parts of the system at the same time. Please keep this in mind when using it.
     '''
     if provider == Provider.ANY or provider is None:
         provider = Provider.ALL
