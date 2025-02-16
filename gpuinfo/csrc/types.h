@@ -33,13 +33,13 @@ typedef struct {
 } GpuProp;
 
 
-int cudaPresent();
+int checkCuda();
 int cudaGetDeviceCount(int* count);
 int cudaGetDeviceProps(int index, GpuProp* obj);
 void cudaClean();
 
 
-int amdPresent();
+int checkAmd();
 int amdGetDeviceCount(int* count);
 int amdGetDeviceProps(int index, GpuProp* obj);
 void amdClean();

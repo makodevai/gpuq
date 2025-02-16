@@ -290,11 +290,8 @@ static int try_load_cudaruntime() {
 
 
 
-int cudaPresent() {
-    int status = try_load_cudaruntime();
-    if (status)
-        return 0;
-    return 1;
+int checkCuda() {
+    return try_load_cudaruntime();
 }
 
 

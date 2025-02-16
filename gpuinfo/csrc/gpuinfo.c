@@ -91,14 +91,14 @@ static int get_gpu_count() {
 
 
 static PyObject*
-gpuinfo_hascuda(PyObject* self, PyObject* args) {
-    return PyBool_FromLong(cudaPresent());
+gpuinfo_checkcuda(PyObject* self, PyObject* args) {
+    return PyLong_FromLong(checkCuda());
 }
 
 
 static PyObject*
-gpuinfo_hasamd(PyObject* self, PyObject* args) {
-    return PyBool_FromLong(amdPresent());
+gpuinfo_checkamd(PyObject* self, PyObject* args) {
+    return PyLong_FromLong(checkAmd());
 }
 
 
@@ -162,8 +162,8 @@ gpuinfo_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 
 
 static PyMethodDef gpuinfo_methods[] = {
-    {"hascuda", gpuinfo_hascuda, METH_NOARGS, "Return True if cuda runtime can be loaded."},
-    {"hasamd", gpuinfo_hasamd, METH_NOARGS, "Return True if hip runtime can be loaded."},
+    {"checkcuda", gpuinfo_checkcuda, METH_NOARGS, "Return status code for CUDA runtime."},
+    {"checkamd", gpuinfo_checkamd, METH_NOARGS, "Return status code for HIP runtime."},
     {"count", gpuinfo_count, METH_NOARGS, "Return the number of GPUs."},
     {"get", (PyCFunction)gpuinfo_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
     {NULL, NULL, 0, NULL}

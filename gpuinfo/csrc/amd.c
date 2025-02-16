@@ -320,11 +320,8 @@ static int try_load_hipruntime() {
 }
 
 
-int amdPresent() {
-    int status = try_load_hipruntime();
-    if (status)
-        return 0;
-    return 1;
+int checkAmd() {
+    return try_load_hipruntime();
 }
 
 
