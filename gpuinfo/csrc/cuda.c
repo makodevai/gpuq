@@ -278,8 +278,11 @@ static int try_load_cudaruntime() {
 
     if (!device_props_fn) {
         device_props_fn = (cudaGetDeviceProperties_t)dlsym(cuda_runtime_dl, "cudaGetDeviceProperties_v2");
-        if (!device_props_fn)
-            return -3;
+        if (!device_props_fn) {
+            device_props_fn = (cudaGetDeviceProperties_t)dlsym(cuda_runtime_dl, "cudaGetDeviceProperties");
+            if (!device_props_fn)
+                return -3;
+        }
     }
 
     return 0;
