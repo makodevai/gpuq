@@ -3,8 +3,8 @@
 
 #include "patchlevel.h"
 
-// for Python <3.13
-#if PY_VERSION_HEX < 0x030d0000
+// for Python <3.12
+#if PY_VERSION_HEX < 0x030c0000
 #include "structmember.h"
 #define Py_T_UINT T_UINT
 #define Py_T_ULONG T_ULONG
