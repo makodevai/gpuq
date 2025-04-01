@@ -28,14 +28,16 @@ long_desc = None
 long_desc_type = None
 readme_md = Path(__file__).parent.joinpath('README.md')
 if readme_md.exists():
-    data_files.setdefault('.', []).append(readme_md.name)
+    data_files.setdefault('', []).append(readme_md.name)
     with readme_md.open('r') as f:
         long_desc = f.read()
         long_desc_type = 'text/markdown'
 
 license = Path(__file__).parent.joinpath('LICENSE')
 if license.exists():
-    data_files.setdefault('.', []).append(license.name)
+    data_files.setdefault('', []).append(license.name)
+
+data_files.setdefault('', []).append(str(Path(__file__).parent.joinpath('gpuinfo', 'csrc', 'types.h')))
 
 
 class build_maybe_inplace(build_py):
@@ -74,7 +76,7 @@ setup(name=package_name,
       ],
       install_requires=[],
       packages=find_packages(where='.', include=['gpuinfo', 'gpuinfo.*']),
-      data_files=list(data_files.items()),
+      package_data=data_files,
       package_dir={ '': '.' },
       cmdclass={
           'build_py': build_maybe_inplace,
@@ -82,5 +84,5 @@ setup(name=package_name,
       },
       ext_modules=[
           Extension("gpuinfo.C", ["gpuinfo/csrc/gpuinfo.c", "gpuinfo/csrc/amd.c", "gpuinfo/csrc/cuda.c"], extra_compile_args=['-O0', '-g'])
-      ]
+      ],
 )
