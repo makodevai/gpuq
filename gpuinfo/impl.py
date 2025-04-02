@@ -111,7 +111,7 @@ class GenuineImplementation(Implementation):
         }[provider]()
 
     @contextmanager
-    def save_visible(self, clear: bool = True) -> Generator[Visible]:
+    def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
         cuda = os.environ.get("CUDA_VISIBLE_DEVICES", None)
         hip = os.environ.get("HIP_VISIBLE_DEVICES", None)
 
@@ -229,7 +229,7 @@ class MockImplementation(Implementation):
         }[provider]()
 
     @contextmanager
-    def save_visible(self, clear: bool = True) -> Generator[Visible]:
+    def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
         cuda = self.cuda_visible.copy() if self.cuda_visible is not None else None
         hip = self.hip_visible.copy() if self.hip_visible is not None else None
 

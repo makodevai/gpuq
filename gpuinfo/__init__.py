@@ -22,7 +22,7 @@ def _set_impl(impl: Implementation | None) -> Implementation:
 
 
 @contextmanager
-def _with_impl(impl: Implementation | None) -> Generator[Implementation]:
+def _with_impl(impl: Implementation | None) -> Generator[Implementation, None, None]:
     if impl is None:
         impl = _default_impl
     curr = _set_impl(impl)
