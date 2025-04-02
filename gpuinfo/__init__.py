@@ -1,60 +1,32 @@
-import os
+from threading import local
 from contextlib import contextmanager
-from enum import IntFlag, auto
+from typing import Generator
 
+from .provider import Provider
+from .impl import Implementation, GenuineImplementation, MockImplementation
 from .utils import add_module_properties, staticproperty
 
 
-from . import C
+_current_implementation = local()
+_default_impl = GenuineImplementation()
 
 
-class Provider(IntFlag):
-    ANY = 0
+def _get_impl() -> Implementation:
+    return getattr(_current_implementation, 'value', _default_impl)
 
-    CUDA = auto()
-    HIP = auto()
 
-    ALL = CUDA|HIP
+def _set_impl(impl: Implementation | None) -> None:
+    _current_implementation.value = impl
 
 
 @contextmanager
-def _save_visible(clear=True):
-    cuda = os.environ.get('CUDA_VISIBLE_DEVICES', None)
-    hip = os.environ.get('HIP_VISIBLE_DEVICES', None)
-
-    def _is_int(value, _prefix):
-        try:
-            value = int(value)
-            return True
-        except:
-            raise ValueError(f'{_prefix}_VISIBLE_DEVICES environment variable contains values that are not integer - this is currently not supported: {value!r}') from None
-
-    if cuda is not None:
-        parsed_cuda = { int(g) for g in cuda.split(',') if _is_int(g, 'CUDA') }
-        parsed_cuda = sorted(list(parsed_cuda))
-    else:
-        parsed_cuda = None
-
-    if hip is not None:
-        parsed_hip = { int(g) for g in hip.split(',') if _is_int(g, 'HIP') }
-        parsed_hip = sorted(list(parsed_hip))
-    else:
-        parsed_hip = parsed_cuda
-
-    if clear:
-        if cuda is not None:
-            del os.environ['CUDA_VISIBLE_DEVICES']
-        if hip is not None:
-            del os.environ['HIP_VISIBLE_DEVICES']
-
+def _with_impl(impl: Implementation | None) -> Generator[None]:
+    curr = _get_impl()
+    _set_impl(impl)
     try:
-        yield { Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip }
+        yield
     finally:
-        if clear:
-            if cuda is not None:
-                os.environ['CUDA_VISIBLE_DEVICES'] = cuda
-            if hip is not None:
-                os.environ['HIP_VISIBLE_DEVICES'] = hip
+        _set_impl(curr)
 
 
 def _global_to_visible(system_index: int, visible: list[int]):
@@ -65,20 +37,6 @@ def _global_to_visible(system_index: int, visible: list[int]):
         return visible.index(system_index)
     except ValueError:
         return None
-
-
-def hascuda():
-    return C.checkcuda() == 0
-
-
-def hasamd():
-    return C.checkamd() == 0
-
-
-_provider_query_map = {
-    Provider.CUDA: hascuda,
-    Provider.HIP: hasamd
-}
 
 
 class Properties():
@@ -316,14 +274,16 @@ def query(provider: Provider = Provider.ANY, required: Provider = None, visible_
     if provider == Provider.ANY or provider is None:
         provider = Provider.ALL
 
+    _impl = _get_impl()
+
     if required:
         for p in Provider:
             if p & required:
-                if not _provider_query_map[p]():
+                if not _impl.provider_check(p):
                     raise RuntimeError(f'Provider {p.name} is required but the relevant runtime is missing from the system!')
 
-    with _save_visible() as visible:
-        num = C.count()
+    with _impl.save_visible() as visible:
+        num = _impl.count()
 
         if not num:
             if required is not None or nonempty:
@@ -333,7 +293,7 @@ def query(provider: Provider = Provider.ANY, required: Provider = None, visible_
         ret = []
 
         for idx in range(num):
-            dev = C.get(idx)
+            dev = _impl.get(idx)
             prov = Provider[dev.provider]
 
             visible_set = visible.get(prov)
@@ -357,7 +317,7 @@ def query(provider: Provider = Provider.ANY, required: Provider = None, visible_
         return ret
 
 
-def count(provider: Provider = Provider.ALL, visible_only: bool = False):
+def count(provider: Provider = Provider.ALL, visible_only: bool = False) -> int:
     ''' Return the overall amount of GPUs for the specified provider (by default all providers).
 
         ``providers`` can be a bitwise mask of valid providers.
@@ -373,17 +333,19 @@ def count(provider: Provider = Provider.ALL, visible_only: bool = False):
     if provider == Provider.ANY or provider is None:
         provider = Provider.ALL
 
+
     if provider == Provider.ALL:
+        _impl = _get_impl()
         if visible_only:
-            return C.count()
+            return _impl.count()
         else:
-            with _save_visible():
-                return C.count()
+            with _impl.save_visible():
+                return _impl.count()
     else:
         return len(query(provider=provider, required=None, visible_only=visible_only))
 
 
-def get(idx, provider: Provider = Provider.ALL, visible_only: bool = False):
+def get(idx, provider: Provider = Provider.ALL, visible_only: bool = False) -> Properties:
     ''' Return the ``idx``-th GPU from the list of GPus for the specified provider(s).
         If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
         environment variables are considered for indexing (see ``count``).
@@ -397,8 +359,9 @@ def get(idx, provider: Provider = Provider.ALL, visible_only: bool = False):
         provider = Provider.ALL
 
     if provider == Provider.ALL and not visible_only:
-        with _save_visible() as visible:
-            ret = C.get(idx)
+        _impl = _get_impl()
+        with _impl.save_visible() as visible:
+            ret = _impl.get(idx)
             prov = Provider[ret.provider]
             visible_set = visible,get(prov)
             local_index = _global_to_visible(ret.index, visible_set)
@@ -410,6 +373,44 @@ def get(idx, provider: Provider = Provider.ALL, visible_only: bool = False):
         if idx < 0 or idx >= len(ret):
             raise ValueError('Invalid GPU index')
         return ret[idx]
+
+
+def hascuda() -> bool:
+    return _get_impl().provider_check(Provider.CUDA)
+
+
+def hasamd() -> bool:
+    return _get_impl().provider_check(Provider.HIP)
+
+
+@contextmanager
+def mock(
+    cuda_count: int | None = 1,
+    hip_count: int | None = None,
+    cuda_visible: list[int] | None = None,
+    hip_visible: list[int] | None = None,
+    name: str = "MockDevice",
+    major: int = 1,
+    minor: int = 2,
+    total_memory: int = 8*1024**3,
+    sms_count: int = 12,
+    sm_threads: int = 2048,
+    sm_shared_memory: int = 16*1024,
+    sm_registers: int = 512,
+    sm_blocks: int = 4,
+    block_threads: int = 1024,
+    block_shared_memory: int = 8*1024,
+    block_registers: int = 256,
+    warp_size: int = 32,
+    l2_cache_size: int = 8*1024**2,
+    concurrent_kernels: bool = True,
+    async_engines_count: int = 0,
+    cooperative: bool = True,
+) -> Generator[None]:
+    with _with_impl(MockImplementation(
+        **locals()
+    )):
+        yield
 
 
 def _get_version():
