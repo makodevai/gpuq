@@ -26,23 +26,26 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Setup python and env
+      - name: Setup python $ and env
         uses: actions/setup-python@v5
         with:
           python-version: $
           cache: 'pip' # caching pip dependencies
 
       - name: Install package with dependencies
-        shell: bash
-        run: ./scripts/ci/gh-setup.sh
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -e '.[dev]'
+          mkdir -p junit
 
       - name: Mypy
-        shell: bash
-        run: ./scripts/ci/static-analysis.sh
+        run: |
+          mypy gpuinfo --junit-xml=junit/mypy-results.xml
 
       - name: Tests
-        shell: bash
-        run: ./scripts/ci/tests.sh
+        run: |
+          pytest tests/ --junitxml=junit/test-results.xml
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v4
