@@ -43,7 +43,7 @@ def _global_to_visible(system_index: int, visible: list[int] | None):
 
 
 def query(
-    provider: Provider = Provider.ANY,
+    provider: Provider = Provider.any(),
     required: Provider | None | Literal[True] = None,
     visible_only: bool = True,
     impl: Implementation | None = None,
@@ -85,11 +85,11 @@ def query(
     """
     nonempty = False
     if required is True:
-        required = Provider.ANY
+        required = Provider.any()
         nonempty = True
 
-    if provider == Provider.ANY or provider is None:
-        provider = Provider.ALL
+    if provider == Provider.any() or provider is None:
+        provider = Provider.all()
 
     if impl is None:
         impl = _get_impl()
@@ -140,7 +140,7 @@ def query(
 
 
 def count(
-    provider: Provider = Provider.ALL,
+    provider: Provider = Provider.all(),
     visible_only: bool = False,
     impl: Implementation | None = None,
 ) -> int:
@@ -156,13 +156,13 @@ def count(
     > This might cause race conditions if the variables are also used/modified by other
     > parts of the system at the same time. Please keep this in mind when using it.
     """
-    if provider == Provider.ANY or provider is None:
-        provider = Provider.ALL
+    if provider == Provider.any() or provider is None:
+        provider = Provider.all()
 
     if impl is None:
         impl = _get_impl()
 
-    if provider == Provider.ALL:
+    if provider == Provider.all():
         if visible_only:
             return impl.c_count()
         else:
@@ -178,7 +178,7 @@ def count(
 
 def get(
     idx,
-    provider: Provider = Provider.ALL,
+    provider: Provider = Provider.all(),
     visible_only: bool = False,
     impl: Implementation | None = None,
 ) -> Properties:
@@ -191,13 +191,13 @@ def get(
     > This might cause race conditions if the variables are also used/modified by other
     > parts of the system at the same time. Please keep this in mind when using it.
     """
-    if provider == Provider.ANY or provider is None:
-        provider = Provider.ALL
+    if provider == Provider.any() or provider is None:
+        provider = Provider.all()
 
     if impl is None:
         impl = _get_impl()
 
-    if provider == Provider.ALL and not visible_only:
+    if provider == Provider.all() and not visible_only:
         with impl.save_visible() as visible:
             ret = impl.c_get(idx)
             prov = Provider[ret.provider]

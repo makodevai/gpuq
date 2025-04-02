@@ -16,8 +16,8 @@ def test_runtimes():
 def test_count():
     with G.mock(cuda_count=2, hip_count=3):
         assert G.count() == 5
-        assert G.count(G.Provider.ANY) == 5
-        assert G.count(G.Provider.ALL) == 5
+        assert G.count(G.Provider.any()) == 5
+        assert G.count(G.Provider.all()) == 5
         assert G.count(G.Provider.CUDA) == 2
         assert G.count(G.Provider.HIP) == 3
 
@@ -94,7 +94,7 @@ def test_visible_hip_from_cuda_2():
 
 def test_query_filtering():
     with G.mock(cuda_count=1, hip_count=0):
-        assert G.query(G.Provider.ANY)
+        assert G.query(G.Provider.any())
         assert G.query(G.Provider.CUDA)
 
         assert G.query(G.Provider.HIP) == []

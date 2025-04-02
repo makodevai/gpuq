@@ -63,7 +63,7 @@ class Implementation(ABC):
 
     def query(
         self,
-        provider: Provider = Provider.ANY,
+        provider: Provider = Provider.any(),
         required: Provider | None | Literal[True] = None,
         visible_only: bool = True,
     ) -> list[Properties]:
@@ -74,14 +74,14 @@ class Implementation(ABC):
         )
 
     def count(
-        self, provider: Provider = Provider.ALL, visible_only: bool = False
+        self, provider: Provider = Provider.all(), visible_only: bool = False
     ) -> int:
         from . import count
 
         return count(provider=provider, visible_only=visible_only, impl=self)
 
     def get(
-        self, idx, provider: Provider = Provider.ALL, visible_only: bool = False
+        self, idx, provider: Provider = Provider.all(), visible_only: bool = False
     ) -> Properties:
         from . import get
 

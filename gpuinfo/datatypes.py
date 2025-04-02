@@ -2,12 +2,16 @@ from enum import IntFlag, auto
 
 
 class Provider(IntFlag):
-    ANY = 0
-
     CUDA = auto()
     HIP = auto()
 
-    ALL = CUDA | HIP
+    @staticmethod
+    def any() -> "Provider":
+        return Provider(0)
+
+    @staticmethod
+    def all() -> "Provider":
+        return Provider.CUDA | Provider.HIP
 
 
 class Properties:
