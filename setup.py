@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2024 A2labs, Inc.
+# Copyright 2024-2025 Mako
 # All rights reserved.
 #
 
@@ -62,27 +62,34 @@ class custom_wheel(dist_info_mixin, build_py):
 
 
 setup(name=package_name,
-      version=package_version.version,
-      description=description,
-      author=author,
-      author_email=author_email,
-      url=url,
-      download_url=download_url,
-      long_description=long_desc,
-      long_description_content_type=long_desc_type,
-      python_requires='>=3.10.0',
-      setup_requires=[
-          'GitPython'
-      ],
-      install_requires=[],
-      packages=find_packages(where='.', include=['gpuinfo', 'gpuinfo.*']),
-      package_data=data_files,
-      package_dir={ '': '.' },
-      cmdclass={
-          'sdist': custom_sdist,
-          'build_py': custom_wheel
-      },
-      ext_modules=[
-          Extension("gpuinfo.C", ["gpuinfo/csrc/gpuinfo.c", "gpuinfo/csrc/amd.c", "gpuinfo/csrc/cuda.c"], extra_compile_args=['-O0', '-g'])
-      ],
+    version=package_version.version,
+    description=description,
+    author=author,
+    author_email=author_email,
+    url=url,
+    download_url=download_url,
+    long_description=long_desc,
+    long_description_content_type=long_desc_type,
+    python_requires='>=3.10.0',
+    install_requires=[
+        'typing_extensions'
+    ],
+    extras_require={
+        "dev": [
+            "GitPython",
+            "mypy",
+            "black",
+            "pytest"
+        ]
+    },
+    packages=find_packages(where='.', include=['gpuinfo', 'gpuinfo.*']),
+    package_data=data_files,
+    package_dir={ '': '.' },
+    cmdclass={
+        'sdist': custom_sdist,
+        'build_py': custom_wheel
+    },
+    ext_modules=[
+        Extension("gpuinfo.C", ["gpuinfo/csrc/gpuinfo.c", "gpuinfo/csrc/amd.c", "gpuinfo/csrc/cuda.c"], extra_compile_args=['-O0', '-g'])
+    ],
 )
