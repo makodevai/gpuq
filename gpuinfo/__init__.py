@@ -17,8 +17,8 @@ def _get_default_impl():
     if _default_impl is not None:
         return _default_impl
 
-    _impl_name = os.environ.get('MAKO_MOCK_GPU', '').strip().lower()
-    if not _impl_name or _impl_name in ['0', 'false', 'no', 'none']:
+    _impl_name = os.environ.get("MAKO_MOCK_GPU", "").strip().lower()
+    if not _impl_name or _impl_name in ["0", "false", "no", "none"]:
         _default_impl = genuine()
     else:
         _default_impl = mock()
@@ -249,11 +249,15 @@ def hasamd(impl: Implementation | None = None) -> bool:
 
 
 def mock(
-    cuda_count: int | None = default(1, 'MAKO_MOCK_GPU_CUDA', int_or_none),
-    hip_count: int | None = default(None, 'MAKO_MOCK_GPU_HIP', int_or_none),
-    cuda_visible: list[int] | None = default(None, 'CUDA_VISIBLE_DEVICES', int_list),
-    hip_visible: list[int] | None = default(None, 'HIP_VISIBLE_DEVICES', int_list),
-    name: str = default("{} Mock Device", 'MAKO_MOCK_GPU_NAME', str),
+    cuda_count: int | None | default = default(1, "MAKO_MOCK_GPU_CUDA", int_or_none),
+    hip_count: int | None | default = default(None, "MAKO_MOCK_GPU_HIP", int_or_none),
+    cuda_visible: list[int] | None | default = default(
+        None, "CUDA_VISIBLE_DEVICES", int_list
+    ),
+    hip_visible: list[int] | None | default = default(
+        None, "HIP_VISIBLE_DEVICES", int_list
+    ),
+    name: str | default = default("{} Mock Device", "MAKO_MOCK_GPU_NAME", str),
     major: int = 1,
     minor: int = 2,
     total_memory: int = 8 * 1024**3,
@@ -271,7 +275,10 @@ def mock(
     async_engines_count: int = 0,
     cooperative: bool = True,
 ) -> Implementation:
-    args = { name: (arg if not isinstance(arg, default) else arg.get()) for name, arg in locals().items() }
+    args = {
+        name: (arg if not isinstance(arg, default) else arg.get())
+        for name, arg in locals().items()
+    }
     return MockImplementation(**args)
 
 

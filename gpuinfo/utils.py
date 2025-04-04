@@ -73,17 +73,22 @@ def add_module_properties(module_name, properties):
 
 
 def int_or_none(value: str) -> int | None:
-    if value.lower() in ['', 'none', 'no']:
+    if value.lower() in ["", "none", "no"]:
         return None
     return int(value)
 
 
 def int_list(value: str) -> list[int]:
-    return [int(el) for el in value.split(',')]
+    return [int(el) for el in value.split(",")]
 
 
 class default:
-    def __init__(self, value: Any, env: str | None = None, env_parser: Callable[[str], Any] | None = None):
+    def __init__(
+        self,
+        value: Any,
+        env: str | None = None,
+        env_parser: Callable[[str], Any] | None = None,
+    ):
         self.value = value
         self.env = env
         self.env_parser = env_parser
