@@ -158,7 +158,7 @@ class MockImplementation(Implementation):
         hip_count: int | None = None,
         cuda_visible: list[str | int] | None = None,
         hip_visible: list[str | int] | None = None,
-        name: str = "MockDevice",
+        name: str = "{} Mock Device",
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,

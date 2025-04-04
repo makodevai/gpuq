@@ -1,5 +1,7 @@
+import os
 import sys
 import types
+from typing import Any, Callable
 
 
 class staticproperty(property):
@@ -31,15 +33,12 @@ class staticproperty(property):
 
 
 class LazyModuleType(types.ModuleType):
-    def __init__(self, name):
-        super().__init__(name)
-
     def __getattribute__(self, name: str):
         _props = super().__getattribute__("_props")
         if name in _props:
             return object.__getattribute__(self, name)
         else:
-            return types.ModuleType.__getattribute__(self, name)
+            return super().__getattribute__(name)
 
     def __dir__(self):
         ret = super().__dir__()
@@ -68,5 +67,38 @@ def add_module_properties(module_name, properties):
 
     if replace:
         new_module = hacked_type(module_name)
-        new_module.__dict__.update(module.__dict__)
-        sys.modules[module_name] = new_module
+        module.__class__ = new_module.__class__
+        module.__name__ = new_module.__name__
+        module.__dict__.update(new_module.__dict__)
+
+
+def int_or_none(value: str) -> int | None:
+    if value.lower() in ["", "none", "no"]:
+        return None
+    return int(value)
+
+
+def int_list(value: str) -> list[int]:
+    return [int(el) for el in value.split(",")]
+
+
+class default:
+    def __init__(
+        self,
+        value: Any,
+        env: str | None = None,
+        env_parser: Callable[[str], Any] | None = None,
+    ):
+        self.value = value
+        self.env = env
+        self.env_parser = env_parser
+
+    def get(self) -> Any:
+        ret = self.value
+        if self.env is not None:
+            if self.env in os.environ:
+                ret = os.environ[self.env]
+                if self.env_parser is not None:
+                    ret = self.env_parser(ret)
+
+        return ret

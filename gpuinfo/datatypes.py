@@ -214,7 +214,7 @@ class MockCObj:
         ord: int = 0,
         provider: str = "CUDA",
         index: int = 0,
-        name: str = "MockDevice",
+        name: str = "{} Mock Device",
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
@@ -235,7 +235,7 @@ class MockCObj:
         self.ord = ord
         self.provider = provider
         self.index = index
-        self.name = name
+        self.name = name.format(provider)
         self.major = major
         self.minor = minor
         self.total_memory = total_memory

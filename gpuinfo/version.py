@@ -1,6 +1,6 @@
 from typing import Any
 
-version = "1.1.0"
+version = "1.1.1"
 repo = "unknown"
 commit = "unknown"
 has_repo = False

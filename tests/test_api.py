@@ -1,27 +1,39 @@
+import os
 import gpuinfo as G
-from gpuinfo import _default_impl, _set_impl, _with_impl, _get_impl, GenuineImplementation, MockImplementation
+from gpuinfo import _set_impl, _with_impl, _get_impl, GenuineImplementation, MockImplementation
+
+
+def test_default_is_mock():
+    assert isinstance(G.default_impl, GenuineImplementation)
+
+    G._default_impl = None
+    os.environ['MAKO_MOCK_GPU'] = '1'
+    try:
+        assert isinstance(G.default_impl, MockImplementation)
+    finally:
+        del os.environ['MAKO_MOCK_GPU']
 
 
 def test_default_impl():
-    assert _get_impl() is _default_impl
+    assert _get_impl() is G.default_impl
 
 
 def test_set_impl():
     impl2 = GenuineImplementation()
-    assert _set_impl(impl2) is _default_impl
+    assert _set_impl(impl2) is G.default_impl
     assert _get_impl() is impl2
 
     assert _set_impl(None) is impl2
-    assert _get_impl() is _default_impl
+    assert _get_impl() is G.default_impl
 
 
 def test_set_impl_obj():
     impl2 = GenuineImplementation()
-    assert impl2.set() is _default_impl
+    assert impl2.set() is G.default_impl
     assert _get_impl() is impl2
 
-    assert _default_impl.set() is impl2
-    assert _get_impl() is _default_impl
+    assert G.default_impl.set() is impl2
+    assert _get_impl() is G.default_impl
 
 
 def test_with_impl():
@@ -30,7 +42,7 @@ def test_with_impl():
         assert ret is impl2
         assert _get_impl() is impl2
 
-    assert _get_impl() is _default_impl
+    assert _get_impl() is G.default_impl
 
 
 def test_with_impl_obj():
@@ -39,29 +51,29 @@ def test_with_impl_obj():
         assert ret is impl2
         assert _get_impl() is impl2
 
-    assert _get_impl() is _default_impl
+    assert _get_impl() is G.default_impl
 
 
 def test_nested_with():
     impl2 = MockImplementation()
     impl3 = GenuineImplementation()
 
-    assert _get_impl() is _default_impl
+    assert _get_impl() is G.default_impl
     with _with_impl(impl2):
         assert _get_impl() is impl2
         with impl3:
             assert _get_impl() is impl3
-            with _default_impl:
-                assert _get_impl() is _default_impl
+            with G.default_impl:
+                assert _get_impl() is G.default_impl
                 with _with_impl(impl2):
                     assert _get_impl() is impl2
                     with _with_impl(None):
-                        assert _get_impl() is _default_impl
+                        assert _get_impl() is G.default_impl
                     assert _get_impl() is impl2
-                assert _get_impl() is _default_impl
+                assert _get_impl() is G.default_impl
             assert _get_impl() is impl3
         assert _get_impl() is impl2
-    assert _get_impl() is _default_impl
+    assert _get_impl() is G.default_impl
 
 
 def test_obj_api_count():

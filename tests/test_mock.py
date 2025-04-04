@@ -106,3 +106,15 @@ def test_query_filtering():
             G.query(G.Provider.HIP, required=True)
         with pytest.raises(RuntimeError):
             G.query(G.Provider.CUDA, required=G.Provider.HIP)
+
+
+def test_default_names():
+    with G.mock(cuda_count=1):
+        assert G.get(0).name == 'CUDA Mock Device'
+
+    with G.mock(cuda_count=None, hip_count=1):
+        assert G.get(0).name == 'HIP Mock Device'
+
+    with G.mock(cuda_count=1, hip_count=1):
+        assert G.get(0).name == 'CUDA Mock Device'
+        assert G.get(1).name == 'HIP Mock Device'
