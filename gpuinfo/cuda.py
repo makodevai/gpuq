@@ -16,7 +16,7 @@ _cuda_process_info = re.compile(
 )
 
 
-def is_windows():
+def is_windows() -> bool:
     return sys.platform.lower().startswith("win")
 
 
@@ -26,15 +26,15 @@ class CudaRuntimeInfo:
 
     @property
     def utilisation(self) -> int:
-        return get_gpu_status(self.index).get("utilisation", -1)
+        return get_gpu_status(self.index).get("utilisation", -1)  # type: ignore[no-any-return]
 
     @property
     def used_memory(self) -> int:
-        return get_gpu_status(self.index).get("used_memory", -1)
+        return get_gpu_status(self.index).get("used_memory", -1)  # type: ignore[no-any-return]
 
     @property
     def pids(self) -> list[int]:
-        return get_gpu_status(self.index).get("pids", [])
+        return get_gpu_status(self.index).get("pids", [])  # type: ignore[no-any-return]
 
 
 @dataclass

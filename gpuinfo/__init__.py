@@ -12,7 +12,7 @@ _current_implementation = local()
 _default_impl = None
 
 
-def _get_default_impl():
+def _get_default_impl() -> Implementation:
     global _default_impl
     if _default_impl is not None:
         return _default_impl
@@ -47,7 +47,7 @@ def _with_impl(impl: Implementation | None) -> Generator[Implementation, None, N
         _set_impl(curr)
 
 
-def _global_to_visible(system_index: int, visible: list[int] | None):
+def _global_to_visible(system_index: int, visible: list[int] | None) -> int | None:
     if visible is None:
         return system_index
 
@@ -192,7 +192,7 @@ def count(
 
 
 def get(
-    idx,
+    idx: int,
     provider: Provider = Provider.all(),
     visible_only: bool = False,
     impl: Implementation | None = None,
@@ -214,19 +214,20 @@ def get(
 
     if provider == Provider.all() and not visible_only:
         with impl.save_visible() as visible:
-            ret = impl.c_get(idx)
-            prov = Provider[ret.provider]
+            cobj = impl.c_get(idx)
+            prov = Provider[cobj.provider]
             visible_set = visible.get(prov)
-            local_index = _global_to_visible(ret.index, visible_set)
-            return Properties(ret, local_index, impl)
+            local_index = _global_to_visible(cobj.index, visible_set)
+            return Properties(cobj, local_index, impl)
     else:
-        ret = query(
+        ret: list[Properties] = query(
             provider=provider, required=None, visible_only=visible_only, impl=impl
         )
         if not ret:
             raise RuntimeError("No GPUs available")
         if idx < 0 or idx >= len(ret):
             raise IndexError("Invalid GPU index")
+
         return ret[idx]
 
 
@@ -296,25 +297,25 @@ def genuine() -> Implementation:
     return GenuineImplementation()
 
 
-def _get_version():
+def _get_version() -> str:
     from . import version
 
     return version.version
 
 
-def _get_has_repo():
+def _get_has_repo() -> bool:
     from . import version
 
     return version.has_repo
 
 
-def _get_repo():
+def _get_repo() -> str:
     from . import version
 
     return version.repo
 
 
-def _get_commit():
+def _get_commit() -> str:
     from . import version
 
     return version.commit
