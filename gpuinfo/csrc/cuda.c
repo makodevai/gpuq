@@ -289,7 +289,6 @@ static int try_load_cudaruntime() {
 }
 
 
-
 int checkCuda() {
     return try_load_cudaruntime();
 }
@@ -320,6 +319,7 @@ int cudaGetDeviceProps(int index, GpuProp* obj) {
     }
 
     strcpy(obj->_provider_storage, "CUDA");
+    bytes_to_hex(deviceProp.uuid.bytes, obj->_uuid_storage, 16);
     obj->index = index;
     memcpy(obj->_name_storage, deviceProp.name, 256);
     obj->major = deviceProp.major;

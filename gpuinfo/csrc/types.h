@@ -8,6 +8,7 @@
 typedef struct {
     PyObject_HEAD
     int ord;
+    const char* uuid;
     const char* provider;
     int index;
     const char* name;
@@ -30,6 +31,7 @@ typedef struct {
 
     char _provider_storage[8];
     char _name_storage[256];
+    char _uuid_storage[32];
 } GpuProp;
 
 
@@ -43,6 +45,17 @@ int checkAmd();
 int amdGetDeviceCount(int* count);
 int amdGetDeviceProps(int index, GpuProp* obj);
 void amdClean();
+
+
+static inline void bytes_to_hex(const char* in, char* out, int bytes_len) {
+    for (int i=0; i<bytes_len; ++i) {
+        char high = in[i] >> 4;
+        char low = in[i] & 0x0F;
+
+        out[i*2] = (high < 10 ? '0' + high : 'a' + (high - 10));
+        out[i*2+1] = (low < 10 ? '0' + low : 'a' + (low - 10));
+    }
+}
 
 
 #endif //GPUINFO_TYPES_H

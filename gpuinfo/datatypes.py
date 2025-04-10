@@ -1,4 +1,8 @@
+from uuid import uuid5, UUID
 from enum import IntFlag, auto
+
+from .cuda import CudaRuntimeInfo
+from .hip import HipRuntimeInfo
 
 
 class Provider(IntFlag):
@@ -19,11 +23,17 @@ class Properties:
         self.cobj = cobj
         self.local_index = local_index
         self.impl = impl
+        self._cuda_info = None
+        self._hip_info = None
 
     @property
     def ord(self) -> int:
         """Ordinal of the GPU, across all providers and devices. Specific to the gpuinfo package."""
         return self.cobj.ord
+
+    @property
+    def uuid(self) -> UUID:
+        return UUID(self.cobj.uuid)
 
     @property
     def provider(self) -> Provider:
@@ -149,9 +159,32 @@ class Properties:
     def cooperative(self) -> bool:
         return self.cobj.cooperative
 
+    @property
+    def cuda_info(self) -> CudaRuntimeInfo | None:
+        if self._cuda_info is not None:
+            return self._cuda_info
+
+        if self.provider != Provider.CUDA:
+            return None
+
+        self._cuda_info = self.impl.cuda_runtime_info(self.system_index)
+        return self._cuda_info
+
+    @property
+    def hip_info(self) -> HipRuntimeInfo | None:
+        if self._hip_info is not None:
+            return self._hip_info
+
+        if self.provider != Provider.HIP:
+            return None
+
+        self._hip_info = self.impl.hip_runtime_info(self.system_index)
+        return self._hip_info
+
     def asdict(self, strip_index=False):
         ret = {
             "ord": self.ord,
+            "uuid": self.uuid,
             "provider": self.provider.name,
             "index": self.index,
             "system_index": self.system_index,
@@ -176,6 +209,7 @@ class Properties:
 
         if strip_index:
             del ret["ord"]
+            del ret["uuid"]
             del ret["index"]
             del ret["system_index"]
 
@@ -212,6 +246,7 @@ class MockCObj:
     def __init__(
         self,
         ord: int = 0,
+        uuid: str | None = None,
         provider: str = "CUDA",
         index: int = 0,
         name: str = "{} Mock Device",
@@ -232,10 +267,21 @@ class MockCObj:
         async_engines_count: int = 0,
         cooperative: bool = True,
     ) -> None:
+        name = name.format(provider)
+
+        if uuid is None:
+            args = dict(locals())
+            del args["self"]
+            del args["uuid"]
+            args_str = str(args)
+            # namespace is hex of "mako_gpuinfo_mock" (possibly truncated)
+            uuid = uuid5(UUID("6d616b6f-5f67-7075-696e-666f5f6d6f63"), args_str).hex
+
         self.ord = ord
+        self.uuid = uuid
         self.provider = provider
         self.index = index
-        self.name = name.format(provider)
+        self.name = name
         self.major = major
         self.minor = minor
         self.total_memory = total_memory

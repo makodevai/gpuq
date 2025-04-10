@@ -274,6 +274,16 @@ def mock(
     concurrent_kernels: bool = True,
     async_engines_count: int = 0,
     cooperative: bool = True,
+    # cuda runtime args
+    cuda_utilisation: int = 0,
+    cuda_memory: int = 1,
+    cuda_pids: list[int] = [],
+    # hip runtime args
+    hip_gfx: str = "942",
+    hip_drm: int = 128,
+    hip_node_idx: int = 2,
+    hip_pids: list[int] = [],
+    _hip_drm_stride: int = 8,
 ) -> Implementation:
     args = {
         name: (arg if not isinstance(arg, default) else arg.get())

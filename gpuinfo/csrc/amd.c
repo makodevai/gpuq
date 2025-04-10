@@ -350,6 +350,7 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     }
 
     strcpy(obj->_provider_storage, "HIP");
+    bytes_to_hex(deviceProp.uuid.bytes, obj->_uuid_storage, 16);
     obj->index = index;
     memcpy(obj->_name_storage, deviceProp.name, 256);
     obj->major = deviceProp.major;
