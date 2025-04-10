@@ -10,7 +10,9 @@ _amd_nodes_tree = "/sys/class/kfd/kfd/topology/nodes/"
 _amd_node_info_file = "properties"
 _amd_node_gfx_ver = re.compile(r"gfx_target_version ([0-9a-f]+)")
 _amd_node_drm_minor = re.compile(r"drm_render_minor ([0-9]+)")
-_amd_pid_gpus = re.compile(r"PID ([0-9]+) is using ([0-9]+) DRM device\(s\):\n(([0-9]+\s*)+)", re.MULTILINE)
+_amd_pid_gpus = re.compile(
+    r"PID ([0-9]+) is using ([0-9]+) DRM device\(s\):\n(([0-9]+\s*)+)", re.MULTILINE
+)
 
 
 @dataclass
@@ -75,7 +77,7 @@ def _get_hip_nodes_info() -> list[dict[str, str | int]]:
 
 def get_gpu_pids(gpu_idx: int) -> list[int]:
     try:
-        output = subprocess.check_output(["rocm-smi", "--showpidgpus"]).decode('UTF-8')
+        output = subprocess.check_output(["rocm-smi", "--showpidgpus"]).decode("UTF-8")
     except:
         return []
 
@@ -87,7 +89,7 @@ def get_gpu_pids(gpu_idx: int) -> list[int]:
         if num_gpus <= 0:
             continue
 
-        gpus = { int(gpu) for gpu in match.group(3).splitlines() if gpu }
+        gpus = {int(gpu) for gpu in match.group(3).splitlines() if gpu}
         if gpu_idx in gpus:
             ret.append(pid)
 
@@ -101,10 +103,10 @@ def get_hip_info(gpu_idx: int) -> HipRuntimeInfo | None:
     nodes_info = _get_hip_nodes_info()
     if gpu_idx >= len(nodes_info):
         return None
-    
+
     return HipRuntimeInfo(
         index=gpu_idx,
-        gfx=nodes_info[gpu_idx]["gfx"],
-        drm=nodes_info[gpu_idx]["drm"],
-        node_idx=nodes_info[gpu_idx]["node"],
+        gfx=nodes_info[gpu_idx]["gfx"],  # type: ignore[arg-type]
+        drm=nodes_info[gpu_idx]["drm"],  # type: ignore[arg-type]
+        node_idx=nodes_info[gpu_idx]["node"],  # type: ignore[arg-type]
     )

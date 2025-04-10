@@ -158,7 +158,7 @@ class Properties:
     @property
     def cooperative(self) -> bool:
         return self.cobj.cooperative
-    
+
     @property
     def cuda_info(self) -> CudaRuntimeInfo | None:
         if self._cuda_info is not None:
@@ -166,7 +166,7 @@ class Properties:
 
         if self.provider != Provider.CUDA:
             return None
-        
+
         self._cuda_info = self.impl.cuda_runtime_info(self.system_index)
         return self._cuda_info
 
@@ -177,7 +177,7 @@ class Properties:
 
         if self.provider != Provider.HIP:
             return None
-        
+
         self._hip_info = self.impl.hip_runtime_info(self.system_index)
         return self._hip_info
 

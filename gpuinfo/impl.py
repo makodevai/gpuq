@@ -157,7 +157,7 @@ class GenuineImplementation(Implementation):
 
     def c_get(self, ord: int) -> Any:
         return C.get(ord)
-    
+
     def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
         return get_cuda_info(gpu_index)
 
@@ -329,13 +329,13 @@ class MockImplementation(Implementation):
         if self.cuda_count is None or gpu_index < 0 or gpu_index >= self.cuda_count:
             return None
 
-        return CudaRuntimeInfoMock(gpu_index, **self.cuda_runtime_args)
+        return CudaRuntimeInfoMock(gpu_index, **self.cuda_runtime_args)  # type: ignore[arg-type]
 
     def hip_runtime_info(self, gpu_index: int) -> HipRuntimeInfo | None:
         if self.hip_count is None or gpu_index < 0 or gpu_index >= self.hip_count:
             return None
 
-        ret = HipRuntimeInfoMock(gpu_index, **self.hip_runtime_args)
+        ret = HipRuntimeInfoMock(gpu_index, **self.hip_runtime_args)  # type: ignore[arg-type]
         ret.drm += gpu_index * self._hip_drm_stride
         ret.node_idx += gpu_index
         return ret

@@ -8,8 +8,12 @@ from dataclasses import dataclass
 from typing import Any
 
 
-_cuda_gpu_info = re.compile(r'(?:(?:[0-9]+)%|N/A).*?([0-9]+)MiB +/ +([0-9]+)MiB.*?([0-9]+)%')
-_cuda_process_info = re.compile(r'^ *?\| +([0-9]+) +[^ ]+ +[^ ]+ +([0-9]+) +(G|C) +.*? ([0-9]+)MiB \|', re.MULTILINE)
+_cuda_gpu_info = re.compile(
+    r"(?:(?:[0-9]+)%|N/A).*?([0-9]+)MiB +/ +([0-9]+)MiB.*?([0-9]+)%"
+)
+_cuda_process_info = re.compile(
+    r"^ *?\| +([0-9]+) +[^ ]+ +[^ ]+ +([0-9]+) +(G|C) +.*? ([0-9]+)MiB \|", re.MULTILINE
+)
 
 
 def is_windows():
@@ -35,7 +39,9 @@ class CudaRuntimeInfo:
 
 @dataclass
 class CudaRuntimeInfoMock(CudaRuntimeInfo):
-    def __init__(self, index: int, utilisation: int, used_memory: int, pids: list[int]) -> None:
+    def __init__(
+        self, index: int, utilisation: int, used_memory: int, pids: list[int]
+    ) -> None:
         super().__init__(index)
         self.__utilisation = utilisation
         self.__used_memory = used_memory
@@ -56,12 +62,12 @@ class CudaRuntimeInfoMock(CudaRuntimeInfo):
 
 @cache
 def _get_nvidia_smi_path() -> str | None:
-    path = shutil.which('nvidia-smi')
+    path = shutil.which("nvidia-smi")
     if path is None:
         if is_windows():
-            paths = [r'C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe']
+            paths = [r"C:\Program Files\NVIDIA Corporation\NVSMI\nvidia-smi.exe"]
         else:
-            paths = ['/usr/bin/nvidia-smi', '/opt/bin/nvidia-smi']
+            paths = ["/usr/bin/nvidia-smi", "/opt/bin/nvidia-smi"]
 
         for candidate in paths:
             if os.path.exists(candidate):
@@ -76,9 +82,8 @@ def _get_num_gpus() -> int:
     if path is None:
         return 0
 
-    out = subprocess.check_output([path, '-L']).decode('UTF-8').strip()
+    out = subprocess.check_output([path, "-L"]).decode("UTF-8").strip()
     return sum(1 for line in out.splitlines() if line.strip())
-
 
 
 def get_gpu_status(gpu_index: int) -> dict[str, Any]:
@@ -86,9 +91,9 @@ def get_gpu_status(gpu_index: int) -> dict[str, Any]:
     if not path:
         return {}
 
-    out = subprocess.check_output(path).decode('UTF-8')
+    out = subprocess.check_output(path).decode("UTF-8")
 
-    ret = {}
+    ret: dict[str, Any] = {}
     usage_matches = _cuda_gpu_info.findall(out)
     for idx, match in enumerate(usage_matches):
         if idx != gpu_index:
@@ -96,9 +101,9 @@ def get_gpu_status(gpu_index: int) -> dict[str, Any]:
 
         usage = int(match[-1])
         curr_mem = int(match[-3])
-        ret = { "utilisation": usage, "used_memory": curr_mem, "pids": [] }
+        ret = {"utilisation": usage, "used_memory": curr_mem, "pids": []}
 
-    beg = out.find('Processes')
+    beg = out.find("Processes")
     usage_matches = _cuda_process_info.findall(out, beg)
 
     for m in usage_matches:
@@ -118,7 +123,7 @@ def get_cuda_info(gpu_idx: int) -> CudaRuntimeInfo | None:
     gpus = _get_num_gpus()
     if gpu_idx >= gpus:
         return None
-    
+
     return CudaRuntimeInfo(
         index=gpu_idx,
     )
