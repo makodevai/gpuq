@@ -8,6 +8,8 @@ from typing_extensions import Self
 
 from . import C  # type: ignore
 from .datatypes import Provider, MockCObj, Properties
+from .cuda import CudaRuntimeInfo, get_cuda_info, CudaRuntimeInfoMock
+from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
 
 
 Visible = dict[Provider, list[int] | None]
@@ -38,6 +40,12 @@ class Implementation(ABC):
 
     @abstractmethod
     def c_get(self, ord: int) -> Any: ...
+
+    @abstractmethod
+    def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None: ...
+
+    @abstractmethod
+    def hip_runtime_info(self, gpu_index: int) -> HipRuntimeInfo | None: ...
 
     def set(self) -> "Implementation":
         from . import _set_impl
@@ -149,6 +157,12 @@ class GenuineImplementation(Implementation):
 
     def c_get(self, ord: int) -> Any:
         return C.get(ord)
+    
+    def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
+        return get_cuda_info(gpu_index)
+
+    def hip_runtime_info(self, gpu_index: int) -> HipRuntimeInfo | None:
+        return get_hip_info(gpu_index)
 
 
 class MockImplementation(Implementation):
@@ -175,6 +189,14 @@ class MockImplementation(Implementation):
         concurrent_kernels: bool = True,
         async_engines_count: int = 0,
         cooperative: bool = True,
+        cuda_utilisation: int = 0,
+        cuda_memory: int = 1,
+        cuda_pids: list[int] = [],
+        hip_gfx: str = "942",
+        hip_drm: int = 128,
+        hip_node_idx: int = 2,
+        hip_pids: list[int] = [],
+        _hip_drm_stride: int = 8,
     ) -> None:
         if (cuda_count is not None and cuda_count < 0) or (
             hip_count is not None and hip_count < 0
@@ -207,6 +229,21 @@ class MockImplementation(Implementation):
             "async_engines_count": async_engines_count,
             "cooperative": cooperative,
         }
+
+        self.cuda_runtime_args = {
+            "utilisation": cuda_utilisation,
+            "used_memory": cuda_memory,
+            "pids": cuda_pids,
+        }
+
+        self.hip_runtime_args = {
+            "gfx": hip_gfx,
+            "drm": hip_drm,
+            "node_idx": hip_node_idx,
+            "pids": hip_pids,
+        }
+
+        self._hip_drm_stride = _hip_drm_stride
 
         if cuda_visible is not None:
             self.cuda_visible = sorted(
@@ -287,3 +324,18 @@ class MockImplementation(Implementation):
             provider = "HIP"
 
         return MockCObj(ord=ord, provider=provider, index=index, **self.cobj_args)  # type: ignore[arg-type]
+
+    def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
+        if self.cuda_count is None or gpu_index < 0 or gpu_index >= self.cuda_count:
+            return None
+
+        return CudaRuntimeInfoMock(gpu_index, **self.cuda_runtime_args)
+
+    def hip_runtime_info(self, gpu_index: int) -> HipRuntimeInfo | None:
+        if self.hip_count is None or gpu_index < 0 or gpu_index >= self.hip_count:
+            return None
+
+        ret = HipRuntimeInfoMock(gpu_index, **self.hip_runtime_args)
+        ret.drm += gpu_index * self._hip_drm_stride
+        ret.node_idx += gpu_index
+        return ret
