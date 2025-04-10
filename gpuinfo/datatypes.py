@@ -228,7 +228,8 @@ class Properties:
         return self.asdict(strip_index=True) == other.asdict(strip_index=True)
 
     def __str__(self):
-        props = self.asdict(strip_index=True)
+        props = { "uuid": str(self.uuid) }
+        props.update(self.asdict(strip_index=True))
         del props["provider"]
         del props["name"]
         return (
