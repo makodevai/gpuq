@@ -1,8 +1,13 @@
+from typing import Any, TYPE_CHECKING
 from uuid import uuid5, UUID
 from enum import IntFlag, auto
 
 from .cuda import CudaRuntimeInfo
 from .hip import HipRuntimeInfo
+
+
+if TYPE_CHECKING:
+    from .impl import Implementation
 
 
 class Provider(IntFlag):
@@ -19,17 +24,19 @@ class Provider(IntFlag):
 
 
 class Properties:
-    def __init__(self, cobj, local_index, impl):
+    def __init__(
+        self, cobj: Any, local_index: int | None, impl: "Implementation"
+    ) -> None:
         self.cobj = cobj
         self.local_index = local_index
         self.impl = impl
-        self._cuda_info = None
-        self._hip_info = None
+        self._cuda_info: CudaRuntimeInfo | None = None
+        self._hip_info: HipRuntimeInfo | None = None
 
     @property
     def ord(self) -> int:
         """Ordinal of the GPU, across all providers and devices. Specific to the gpuinfo package."""
-        return self.cobj.ord
+        return self.cobj.ord  # type: ignore[no-any-return]
 
     @property
     def uuid(self) -> UUID:
@@ -66,7 +73,7 @@ class Properties:
         > This might cause race conditions if the variables are also used/modified by other
         > parts of the system at the same time. Please keep this in mind when using the package.
         """
-        return self.cobj.index
+        return self.cobj.index  # type: ignore[no-any-return]
 
     @property
     def is_visible(self) -> bool:
@@ -86,7 +93,7 @@ class Properties:
     @property
     def name(self) -> str:
         """Name of the GPU"""
-        return self.cobj.name
+        return self.cobj.name  # type: ignore[no-any-return]
 
     @property
     def short_name(self) -> str | None:
@@ -97,67 +104,67 @@ class Properties:
 
     @property
     def major(self) -> int:
-        return self.cobj.major
+        return self.cobj.major  # type: ignore[no-any-return]
 
     @property
     def minor(self) -> int:
-        return self.cobj.minor
+        return self.cobj.minor  # type: ignore[no-any-return]
 
     @property
     def total_memory(self) -> int:
-        return self.cobj.total_memory
+        return self.cobj.total_memory  # type: ignore[no-any-return]
 
     @property
     def sms_count(self) -> int:
-        return self.cobj.sms_count
+        return self.cobj.sms_count  # type: ignore[no-any-return]
 
     @property
     def sm_threads(self) -> int:
-        return self.cobj.sm_threads
+        return self.cobj.sm_threads  # type: ignore[no-any-return]
 
     @property
     def sm_shared_memory(self) -> int:
-        return self.cobj.sm_shared_memory
+        return self.cobj.sm_shared_memory  # type: ignore[no-any-return]
 
     @property
     def sm_registers(self) -> int:
-        return self.cobj.sm_registers
+        return self.cobj.sm_registers  # type: ignore[no-any-return]
 
     @property
     def sm_blocks(self) -> int:
-        return self.cobj.sm_blocks
+        return self.cobj.sm_blocks  # type: ignore[no-any-return]
 
     @property
     def block_threads(self) -> int:
-        return self.cobj.block_threads
+        return self.cobj.block_threads  # type: ignore[no-any-return]
 
     @property
     def block_shared_memory(self) -> int:
-        return self.cobj.block_shared_memory
+        return self.cobj.block_shared_memory  # type: ignore[no-any-return]
 
     @property
     def block_registers(self) -> int:
-        return self.cobj.block_registers
+        return self.cobj.block_registers  # type: ignore[no-any-return]
 
     @property
     def warp_size(self) -> int:
-        return self.cobj.warp_size
+        return self.cobj.warp_size  # type: ignore[no-any-return]
 
     @property
     def l2_cache_size(self) -> int:
-        return self.cobj.l2_cache_size
+        return self.cobj.l2_cache_size  # type: ignore[no-any-return]
 
     @property
     def concurrent_kernels(self) -> bool:
-        return self.cobj.concurrent_kernels
+        return self.cobj.concurrent_kernels  # type: ignore[no-any-return]
 
     @property
     def async_engines_count(self) -> int:
-        return self.cobj.async_engines_count
+        return self.cobj.async_engines_count  # type: ignore[no-any-return]
 
     @property
     def cooperative(self) -> bool:
-        return self.cobj.cooperative
+        return self.cobj.cooperative  # type: ignore[no-any-return]
 
     @property
     def cuda_info(self) -> CudaRuntimeInfo | None:
@@ -181,7 +188,7 @@ class Properties:
         self._hip_info = self.impl.hip_runtime_info(self.system_index)
         return self._hip_info
 
-    def asdict(self, strip_index=False):
+    def asdict(self, strip_index: bool = False) -> dict[str, Any]:
         ret = {
             "ord": self.ord,
             "uuid": self.uuid,
@@ -215,7 +222,7 @@ class Properties:
 
         return ret
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if self and other are equivalent GPUs.
 
         If you want to check if two GPus are the same physical devices,
@@ -227,8 +234,8 @@ class Properties:
             return True
         return self.asdict(strip_index=True) == other.asdict(strip_index=True)
 
-    def __str__(self):
-        props = { "uuid": str(self.uuid) }
+    def __str__(self) -> str:
+        props = {"uuid": str(self.uuid)}
         props.update(self.asdict(strip_index=True))
         del props["provider"]
         del props["name"]
@@ -239,7 +246,7 @@ class Properties:
             + "\n}"
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{type(self).__module__}.{type(self).__qualname__}({self.provider.name}[{self.system_index} -> {self.index}], {self.name!r})"
 
 

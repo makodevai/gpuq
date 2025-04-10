@@ -15,7 +15,7 @@ from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
 Visible = dict[Provider, list[int] | None]
 
 
-def _is_int(value, _prefix):
+def _is_int(value: Any, _prefix: str) -> int:
     try:
         value = int(value)
         return True
@@ -89,7 +89,7 @@ class Implementation(ABC):
         return count(provider=provider, visible_only=visible_only, impl=self)
 
     def get(
-        self, idx, provider: Provider = Provider.all(), visible_only: bool = False
+        self, idx: int, provider: Provider = Provider.all(), visible_only: bool = False
     ) -> Properties:
         from . import get
 
@@ -113,10 +113,12 @@ class Implementation(ABC):
 
 class GenuineImplementation(Implementation):
     def provider_check(self, provider: Provider) -> bool:
-        return {
-            Provider.CUDA: (lambda: C.checkcuda() == 0),
-            Provider.HIP: (lambda: C.checkamd() == 0),
-        }[provider]()
+        if provider == Provider.CUDA:
+            return bool(C.checkcuda() == 0)
+        if provider == Provider.HIP:
+            return bool(C.checkamd() == 0)
+
+        raise ValueError(f"Invalid provider: {provider}")
 
     @contextmanager
     def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
@@ -153,7 +155,7 @@ class GenuineImplementation(Implementation):
                     os.environ["HIP_VISIBLE_DEVICES"] = hip
 
     def c_count(self) -> int:
-        return C.count()
+        return int(C.count())
 
     def c_get(self, ord: int) -> Any:
         return C.get(ord)
@@ -260,10 +262,12 @@ class MockImplementation(Implementation):
             self.hip_visible = None
 
     def provider_check(self, provider: Provider) -> bool:
-        return {
-            Provider.CUDA: (lambda: self.cuda_count is not None),
-            Provider.HIP: (lambda: self.hip_count is not None),
-        }[provider]()
+        if provider == Provider.CUDA:
+            return self.cuda_count is not None
+        if provider == Provider.HIP:
+            return self.hip_count is not None
+
+        raise ValueError(f"Invalid provider: {provider}")
 
     @contextmanager
     def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:

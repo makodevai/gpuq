@@ -1,9 +1,11 @@
 from typing import Any
 
-version = "1.2.1"
-repo = "unknown"
-commit = "unknown"
-has_repo = False
+
+version: str = "1.2.2"
+repo: str = "unknown"
+commit: str = "unknown"
+has_repo: bool = False
+
 
 try:
     import git
@@ -16,9 +18,9 @@ try:
         if not r.remotes:
             repo = "local"
         else:
-            repo = r.remotes.origin.url
+            repo = str(r.remotes.origin.url)
 
-        commit = r.head.commit.hexsha
+        commit = str(r.head.commit.hexsha)
         status = []
         if r.is_dirty():
             status.append("dirty")
@@ -45,8 +47,8 @@ try:
         _spec.loader.exec_module(_dist_info)
         assert not has_repo, "_dist_info should not exist when repo is in place"
         assert version == _dist_info.version
-        repo = _dist_info.repo
-        commit = _dist_info.commit
+        repo = str(_dist_info.repo)
+        commit = str(_dist_info.commit)
 except (ImportError, SystemError):
     pass
 

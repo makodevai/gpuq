@@ -44,7 +44,7 @@ jobs:
       - name: Mypy
         run: |
           source .venv/bin/activate
-          mypy gpuinfo --junit-xml=junit/mypy-results.xml
+          mypy --strict gpuinfo --junit-xml=junit/mypy-results.xml
 
       - name: Tests
         run: |
