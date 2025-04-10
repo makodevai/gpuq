@@ -40,19 +40,14 @@ def mock_hip_tree():
         yield
 
 
-class MockedHipNodeProperties:
-    def __init__(self, node_idx: int) -> None:
-        self.node_idx = node_idx
-
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, *args) -> None:
-        return
-
-    def read(self):
-        if self.node_idx < 2:
-            # cpu node
+def get_mocked_read_file():
+    def mocked_read_file(file):
+        file = str(file)
+        assert file.startswith("/sys/class/kfd/kfd/topology/nodes/")
+        node_idx = int(file.split(os.path.sep)[7])
+        if node_idx < 0 or node_idx > 2:
+            raise FileNotFoundError()
+        if node_idx < 2:
             return '''\
 cpu_cores_count 96
 simd_count 0
@@ -125,16 +120,9 @@ sdma_fw_version 22
 unique_id 4376936076086227261
 num_xcc 8
 max_engine_clk_ccompute 2400
-'''.format(128 + (self.node_idx-2)*8)
+'''.format(128 + (node_idx-2)*8)
 
-
-def get_mocked_open():
-    def mocked_open(file, *args, **kwargs):
-        file = str(file)
-        assert file.startswith("/sys/class/kfd/kfd/topology/nodes/")
-        node_idx = int(file.split(os.path.sep)[7])
-        return MockedHipNodeProperties(node_idx)
-    return mocked_open
+    return mocked_read_file
 
 
 @contextmanager
@@ -142,7 +130,7 @@ def mock_fs():
     with ExitStack() as stack:
         stack.enter_context(patch("os.path.exists", return_value=True))
         stack.enter_context(patch("os.listdir", return_value=['1', '2', '0']))
-        stack.enter_context(patch("io.open", new_callable=get_mocked_open))
+        stack.enter_context(patch("gpuinfo.hip._read_file", new_callable=get_mocked_read_file))
         stack.enter_context(patch("subprocess.check_output", return_value=_pid_gpus_output))
         yield
 
@@ -156,10 +144,12 @@ def test_get_hip_info_1():
         assert data.node_idx == 2
         assert data.pids == [1949829, 10678]
 
+
 def test_get_hip_info_failure():
     with mock_hip_tree():
         data = gpuinfo.hip.get_hip_info(1)
         assert data is None
+
 
 def test_get_hip_info_fs():
     with mock_fs():

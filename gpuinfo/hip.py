@@ -38,6 +38,11 @@ class HipRuntimeInfoMock(HipRuntimeInfo):
         return self.__pids
 
 
+# for eaasy mocking in tests
+def _read_file(filepath: str) -> str:
+    return Path(filepath).read_text()
+
+
 @cache
 def _get_hip_nodes_info() -> list[dict[str, str | int]]:
     if os.path.exists(_amd_nodes_tree):
@@ -46,7 +51,7 @@ def _get_hip_nodes_info() -> list[dict[str, str | int]]:
             node_idx = int(node)
             node = os.path.join(_amd_nodes_tree, node, _amd_node_info_file)
             try:
-                info = Path(node).read_text()
+                info = _read_file(node)
             except:
                 continue
             gfx_match = _amd_node_gfx_ver.search(info)
