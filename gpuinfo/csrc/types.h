@@ -49,8 +49,8 @@ void amdClean();
 
 static inline void bytes_to_hex(const char* in, char* out, int bytes_len) {
     for (int i=0; i<bytes_len; ++i) {
-        char high = in[i] >> 4;
-        char low = in[i] & 0x0F;
+        unsigned char high = ((const unsigned char*)(in))[i] >> 4;
+        unsigned char low = ((const unsigned char*)(in))[i] & 0x0F;
 
         out[i*2] = (high < 10 ? '0' + high : 'a' + (high - 10));
         out[i*2+1] = (low < 10 ? '0' + low : 'a' + (low - 10));
