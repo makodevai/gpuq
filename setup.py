@@ -38,6 +38,7 @@ if license.exists():
     data_files.setdefault('', []).append(license.name)
 
 data_files.setdefault('', []).append(str(Path(__file__).parent.joinpath('gpuinfo', 'csrc', 'types.h')))
+data_files.setdefault(package_name, []).append('py.typed')
 
 
 class dist_info_mixin:

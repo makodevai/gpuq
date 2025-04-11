@@ -79,7 +79,7 @@ def query(
          - `anything else (including ``ALL``) means that at least one GPU of each provider
             included in the mask has to be present.
 
-    > **Note:** ```required`` and ``provider`` are mostly independent. For example,
+    > **Note:** ``required`` and ``provider`` are mostly independent. For example,
     > a call like ``query(provider=CUDA, required=HIP)`` is valid and will raise an
     > error if there are no HIP devices but will only return CUDA devices (potentially
     > an empty list). This means, ``required=ANY`` might be a bit counter-intuitive,
@@ -331,3 +331,17 @@ add_module_properties(
         "default_impl": staticproperty(staticmethod(_get_default_impl)),
     },
 )
+
+
+__all__ = [
+    "Properties",
+    "Provider",
+    "query",
+    "count",
+    "get",
+    "hasprovider",
+    "hascuda",
+    "hasamd",
+    "mock",
+    "genuine",
+]
