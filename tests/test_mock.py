@@ -1,10 +1,11 @@
 import pytest
 import multiprocessing as mp
+import multiprocessing.queues as mp_q
 
 import gpuinfo as G
 
 
-def test_runtimes():
+def test_runtimes() -> None:
     with G.mock(cuda_count=0, hip_count=0):
         assert G.hasamd()
         assert G.hascuda()
@@ -14,7 +15,7 @@ def test_runtimes():
         assert not G.hascuda()
 
 
-def test_count():
+def test_count() -> None:
     with G.mock(cuda_count=2, hip_count=3):
         assert G.count() == 5
         assert G.count(G.Provider.any()) == 5
@@ -23,7 +24,7 @@ def test_count():
         assert G.count(G.Provider.HIP) == 3
 
 
-def test_simple_query():
+def test_simple_query() -> None:
     with G.mock(cuda_count=1, hip_count=1):
         assert G.count() == 2
         assert G.get(0).provider == G.Provider.CUDA
@@ -43,7 +44,7 @@ def test_simple_query():
         assert hip[0].provider == G.Provider.HIP
 
 
-def test_get_visible():
+def test_get_visible() -> None:
     with G.mock(cuda_count=2, cuda_visible=[1]):
         assert G.count(visible_only=False) == 2
         assert G.count(visible_only=True) == 1
@@ -65,7 +66,7 @@ def test_get_visible():
             G.get(1, visible_only=True)
 
 
-def test_visible_hip_from_cuda():
+def test_visible_hip_from_cuda() -> None:
     with G.mock(cuda_count=None, hip_count=2, cuda_visible=[0]):
         # This might be a bit counter-intuitive, but follows the HIP behaviour
         # that if CUDA_VISIBLE_DEVICES is set but HIP_VISIBLE_DEVICES is not,
@@ -76,7 +77,7 @@ def test_visible_hip_from_cuda():
         assert G.count(visible_only=True) == 2
 
 
-def test_visible_hip_from_cuda_2():
+def test_visible_hip_from_cuda_2() -> None:
     with G.mock(cuda_count=2, hip_count=2, cuda_visible=[1]):
         assert G.count(visible_only=False) == 4
         assert G.count(visible_only=True) == 2 # see test case above why
@@ -93,7 +94,7 @@ def test_visible_hip_from_cuda_2():
         assert hip.system_index == cuda.system_index
 
 
-def test_query_filtering():
+def test_query_filtering() -> None:
     with G.mock(cuda_count=1, hip_count=0):
         assert G.query(G.Provider.any())
         assert G.query(G.Provider.CUDA)
@@ -109,7 +110,7 @@ def test_query_filtering():
             G.query(G.Provider.CUDA, required=G.Provider.HIP)
 
 
-def test_default_names():
+def test_default_names() -> None:
     with G.mock(cuda_count=1):
         assert G.get(0).name == 'CUDA Mock Device'
 
@@ -121,7 +122,7 @@ def test_default_names():
         assert G.get(1).name == 'HIP Mock Device'
 
 
-def test_uuid_uniqueness():
+def test_uuid_uniqueness() -> None:
     with G.mock(cuda_count=16, hip_count=None):
         gpus = G.query()
         uuids_nvidia = { gpu.uuid for gpu in gpus }
@@ -135,7 +136,7 @@ def test_uuid_uniqueness():
     assert not uuids_nvidia.intersection(uuids_amd)
 
 
-def test_uuid_consistency():
+def test_uuid_consistency() -> None:
     with G.mock(cuda_count=16, hip_count=None):
         gpus = G.query()
         uuids_nvidia_1 = [gpu.uuid for gpu in gpus]
@@ -147,7 +148,7 @@ def test_uuid_consistency():
     assert uuids_nvidia_1 == uuids_nvidia_2
 
 
-def test_uuid_args():
+def test_uuid_args() -> None:
     with G.mock(cuda_count=1, total_memory=128):
         uuid1 = G.get(0).uuid
 
@@ -161,7 +162,7 @@ def test_uuid_args():
     assert uuid1 != uuid3
 
 
-def test_hip_runtime():
+def test_hip_runtime() -> None:
     with G.mock(cuda_count=None, hip_count=1,
                 hip_drm=128,
                 hip_gfx="942",
@@ -177,7 +178,7 @@ def test_hip_runtime():
         assert gpu.hip_info.pids == [1, 1024]
 
 
-def test_cuda_runtime():
+def test_cuda_runtime() -> None:
     with G.mock(cuda_count=1, hip_count=None,
                 cuda_utilisation=11,
                 cuda_memory=1552,
@@ -191,11 +192,11 @@ def test_cuda_runtime():
         assert gpu.cuda_info.pids == [1, 1024]
 
 
-def _child(gpu: G.Properties, queue: mp.Queue) -> G.Properties:
+def _child(gpu: G.Properties, queue: mp_q.Queue[G.Properties]) -> None:
     queue.put(gpu)
 
 
-def test_mp():
+def test_mp() -> None:
     ctx = mp.get_context("spawn")
     q = ctx.Queue()
     with G.mock(cuda_count=1):
