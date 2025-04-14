@@ -1,8 +1,6 @@
 import os
-
-import pytest
-
-from unittest.mock import Mock, patch
+from typing import Generator, Callable
+from unittest.mock import patch
 from contextlib import contextmanager, ExitStack
 
 import gpuinfo.hip
@@ -29,7 +27,7 @@ PID 10678 is using 1 DRM device(s):
 
 
 @contextmanager
-def mock_hip_tree():
+def mock_hip_tree() -> Generator[None, None, None]:
     hip_tree = [
         {'gfx': '942', 'drm': 128, 'node': 2},
     ]
@@ -40,8 +38,8 @@ def mock_hip_tree():
         yield
 
 
-def get_mocked_read_file():
-    def mocked_read_file(file):
+def get_mocked_read_file() -> Callable[[str], str]:
+    def mocked_read_file(file: str) -> str:
         file = str(file)
         assert file.startswith("/sys/class/kfd/kfd/topology/nodes/")
         node_idx = int(file.split(os.path.sep)[7])
@@ -126,7 +124,7 @@ max_engine_clk_ccompute 2400
 
 
 @contextmanager
-def mock_fs():
+def mock_fs() -> Generator[None, None, None]:
     with ExitStack() as stack:
         stack.enter_context(patch("os.path.exists", return_value=True))
         stack.enter_context(patch("os.listdir", return_value=['1', '2', '0']))
@@ -135,9 +133,10 @@ def mock_fs():
         yield
 
 
-def test_get_hip_info_1():
+def test_get_hip_info_1() -> None:
     with mock_hip_tree():
         data = gpuinfo.hip.get_hip_info(0)
+        assert data is not None
         assert data.index == 0
         assert data.drm == 128
         assert data.gfx == "942"
@@ -145,15 +144,16 @@ def test_get_hip_info_1():
         assert data.pids == [1949829, 10678]
 
 
-def test_get_hip_info_failure():
+def test_get_hip_info_failure() -> None:
     with mock_hip_tree():
         data = gpuinfo.hip.get_hip_info(1)
         assert data is None
 
 
-def test_get_hip_info_fs():
+def test_get_hip_info_fs() -> None:
     with mock_fs():
         data = gpuinfo.hip.get_hip_info(0)
+        assert data is not None
         assert data.index == 0
         assert data.drm == 128
         assert data.gfx == "942"

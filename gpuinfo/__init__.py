@@ -12,6 +12,9 @@ _current_implementation = local()
 _default_impl = None
 
 
+default_impl: Implementation
+
+
 def _get_default_impl() -> Implementation:
     global _default_impl
     if _default_impl is not None:

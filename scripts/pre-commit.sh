@@ -13,6 +13,6 @@ else
   black --check gpuinfo
 fi;
 
-mypy --strict gpuinfo
+mypy --strict gpuinfo tests
 
 pytest tests/

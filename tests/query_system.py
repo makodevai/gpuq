@@ -1,7 +1,7 @@
 import gpuinfo as G
 
 
-def main():
+def main() -> None:
     for p in G.Provider:
         print(f'Has provider {p.name}:', G.hasprovider(p))
     print()

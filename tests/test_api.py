@@ -1,9 +1,10 @@
 import os
 import gpuinfo as G
-from gpuinfo import _set_impl, _with_impl, _get_impl, GenuineImplementation, MockImplementation
+from gpuinfo import _set_impl, _with_impl, _get_impl
+from gpuinfo.impl import GenuineImplementation, MockImplementation
 
 
-def test_default_is_mock():
+def test_default_is_mock() -> None:
     assert isinstance(G.default_impl, GenuineImplementation)
 
     G._default_impl = None
@@ -14,11 +15,11 @@ def test_default_is_mock():
         del os.environ['MAKO_MOCK_GPU']
 
 
-def test_default_impl():
+def test_default_impl() -> None:
     assert _get_impl() is G.default_impl
 
 
-def test_set_impl():
+def test_set_impl() -> None:
     impl2 = GenuineImplementation()
     assert _set_impl(impl2) is G.default_impl
     assert _get_impl() is impl2
@@ -27,7 +28,7 @@ def test_set_impl():
     assert _get_impl() is G.default_impl
 
 
-def test_set_impl_obj():
+def test_set_impl_obj() -> None:
     impl2 = GenuineImplementation()
     assert impl2.set() is G.default_impl
     assert _get_impl() is impl2
@@ -36,7 +37,7 @@ def test_set_impl_obj():
     assert _get_impl() is G.default_impl
 
 
-def test_with_impl():
+def test_with_impl() -> None:
     impl2 = MockImplementation()
     with _with_impl(impl2) as ret:
         assert ret is impl2
@@ -45,7 +46,7 @@ def test_with_impl():
     assert _get_impl() is G.default_impl
 
 
-def test_with_impl_obj():
+def test_with_impl_obj() -> None:
     impl2 = MockImplementation()
     with impl2 as ret:
         assert ret is impl2
@@ -54,7 +55,7 @@ def test_with_impl_obj():
     assert _get_impl() is G.default_impl
 
 
-def test_nested_with():
+def test_nested_with() -> None:
     impl2 = MockImplementation()
     impl3 = GenuineImplementation()
 
@@ -76,7 +77,7 @@ def test_nested_with():
     assert _get_impl() is G.default_impl
 
 
-def test_obj_api_count():
+def test_obj_api_count() -> None:
     impl2 = MockImplementation(cuda_count=1, hip_count=None)
     impl3 = MockImplementation(cuda_count=None, hip_count=2)
 
@@ -94,7 +95,7 @@ def test_obj_api_count():
         assert G.count() == impl3.count()
 
 
-def test_obj_api_count_visible():
+def test_obj_api_count_visible() -> None:
     impl = MockImplementation(cuda_count=8, cuda_visible=[0, 1, 2])
     assert impl.count(visible_only=False) == 8
     assert impl.count(visible_only=True) == 3
@@ -104,7 +105,7 @@ def test_obj_api_count_visible():
 
 
 
-def test_obj_api_get():
+def test_obj_api_get() -> None:
     impl2 = MockImplementation(cuda_count=1, hip_count=None)
     impl3 = MockImplementation(cuda_count=None, hip_count=2)
 
@@ -121,7 +122,7 @@ def test_obj_api_get():
         assert G.get(0) == impl3.get(0)
 
 
-def test_obj_api_query():
+def test_obj_api_query() -> None:
     impl2 = MockImplementation(cuda_count=1, hip_count=None)
     impl3 = MockImplementation(cuda_count=None, hip_count=2)
 

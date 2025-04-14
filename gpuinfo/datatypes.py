@@ -191,7 +191,7 @@ class Properties:
     def asdict(self, strip_index: bool = False) -> dict[str, Any]:
         ret = {
             "ord": self.ord,
-            "uuid": self.uuid,
+            "uuid": self.uuid.hex,
             "provider": self.provider.name,
             "index": self.index,
             "system_index": self.system_index,
