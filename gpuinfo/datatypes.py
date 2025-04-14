@@ -249,6 +249,23 @@ class Properties:
     def __repr__(self) -> str:
         return f"{type(self).__module__}.{type(self).__qualname__}({self.provider.name}[{self.system_index} -> {self.index}], {self.name!r})"
 
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        state["cobj"] = None
+        state["_ord"] = self.ord
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        ord = state.pop("_ord")
+        self.__dict__.update(state)
+        with self.impl.save_visible(clear=True):
+            try:
+                self.cobj = self.impl.c_get(ord)
+            except Exception as exp:
+                raise RuntimeError(
+                    f"Failed to unpickle GPU properties object with global ID {ord}"
+                ) from exp
+
 
 class MockCObj:
     def __init__(
