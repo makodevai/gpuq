@@ -1,4 +1,5 @@
 import pytest
+import multiprocessing as mp
 
 import gpuinfo as G
 
@@ -188,3 +189,21 @@ def test_cuda_runtime():
         assert gpu.cuda_info.utilisation == 11
         assert gpu.cuda_info.used_memory == 1552
         assert gpu.cuda_info.pids == [1, 1024]
+
+
+def _child(gpu: G.Properties, queue: mp.Queue) -> G.Properties:
+    queue.put(gpu)
+
+
+def test_mp():
+    ctx = mp.get_context("spawn")
+    q = ctx.Queue()
+    with G.mock(cuda_count=1):
+        gpu = G.get(0)
+        proc = ctx.Process(target=_child, args=(gpu, q))
+        proc.start()
+        proc.join(2)
+        gpu2 = q.get_nowait()
+        assert gpu == gpu2
+        assert gpu.ord == gpu2.ord
+        assert gpu.uuid == gpu2.uuid

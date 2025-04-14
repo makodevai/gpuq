@@ -110,6 +110,14 @@ class Implementation(ABC):
 
         return hasamd(impl=self)
 
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        state["_ctx"] = None
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+
 
 class GenuineImplementation(Implementation):
     def provider_check(self, provider: Provider) -> bool:
