@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import pytest
 import multiprocessing as mp
-import multiprocessing.queues as mp_q
 
 import gpuinfo as G
 
@@ -192,7 +193,7 @@ def test_cuda_runtime() -> None:
         assert gpu.cuda_info.pids == [1, 1024]
 
 
-def _child(gpu: G.Properties, queue: mp_q.Queue[G.Properties]) -> None:
+def _child(gpu: G.Properties, queue: mp.Queue[G.Properties]) -> None:
     queue.put(gpu)
 
 
