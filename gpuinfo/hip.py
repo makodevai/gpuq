@@ -75,6 +75,7 @@ def _get_hip_nodes_info() -> list[dict[str, str | int]]:
                     {"gfx": parsed_gfx, "drm": int(parsed_drm), "node": int(node_idx)}
                 )
 
+        gpus = sorted(gpus, key=lambda d: d["node"])
         return gpus
 
     return []

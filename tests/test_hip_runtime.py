@@ -43,7 +43,7 @@ def get_mocked_read_file() -> Callable[[str], str]:
         file = str(file)
         assert file.startswith("/sys/class/kfd/kfd/topology/nodes/")
         node_idx = int(file.split(os.path.sep)[7])
-        if node_idx < 0 or node_idx > 2:
+        if node_idx < 0 or node_idx > 9:
             raise FileNotFoundError()
         if node_idx < 2:
             return '''\
@@ -162,3 +162,12 @@ def test_get_hip_info_fs() -> None:
 
         data2 = gpuinfo.hip.get_hip_info(1)
         assert data2 is None
+
+
+def test_hip_info_unordered_listdir() -> None:
+    with mock_fs():
+        with patch("os.listdir", return_value=['7', '5', '3', '1', '8', '6', '4', '2', '0', '9']):
+            data = gpuinfo.hip.get_hip_info(0)
+            assert data is not None
+            assert data.index == 0
+            assert data.node_idx == 2
