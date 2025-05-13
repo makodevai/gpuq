@@ -168,5 +168,6 @@ def test_hip_info_unordered_listdir() -> None:
     with mock_fs():
         with patch("os.listdir", return_value=['7', '5', '3', '1', '8', '6', '4', '2', '0', '9']):
             data = gpuinfo.hip.get_hip_info(0)
+            assert data is not None
             assert data.index == 0
             assert data.node_idx == 2
