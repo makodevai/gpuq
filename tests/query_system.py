@@ -1,4 +1,4 @@
-import gpuinfo as G
+import gpuq as G
 
 
 def main() -> None:

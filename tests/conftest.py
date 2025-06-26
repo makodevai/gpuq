@@ -2,12 +2,12 @@ from threading import local
 from typing import Generator
 
 import pytest
-import gpuinfo
+import gpuq
 
 
 @pytest.fixture(autouse=True)
 def run_around_tests() -> Generator[None, None, None]:
-    assert gpuinfo._default_impl is None
+    assert gpuq._default_impl is None
     yield
-    gpuinfo._default_impl = None
-    gpuinfo._current_implementation = local()
+    gpuq._default_impl = None
+    gpuq._current_implementation = local()

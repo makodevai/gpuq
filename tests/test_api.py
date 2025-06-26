@@ -1,7 +1,7 @@
 import os
-import gpuinfo as G
-from gpuinfo import _set_impl, _with_impl, _get_impl
-from gpuinfo.impl import GenuineImplementation, MockImplementation
+import gpuq as G
+from gpuq import _set_impl, _with_impl, _get_impl
+from gpuq.impl import GenuineImplementation, MockImplementation
 
 
 def test_default_is_mock() -> None:

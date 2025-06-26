@@ -1,4 +1,4 @@
-# multi-vendor GPU querying utility with minimal dependencies
+# *gpuq* - multi-vendor *GPU* *q*uerying utility with minimal dependencies
 
 This small library is a direct answer to the lack of a lightweight, cross-compatible utility to query available GPUs - regardless of what vendor, distro, or overall environment one might be using.
 
@@ -11,6 +11,15 @@ In particular, the implementation meets the following requirements:
     - your laptop does not have a GPU? -> the package will report 0 GPUs available (duh), no exceptions, linker errors, etc.
  - allows for easy mocking (for unit tests, etc.)
  - fully typed (conforms to `mypy --strict` checking)
+
+Compared to some existing alternatives, it has the following differences:
+ - `torch.cuda` - not lightweight, also requires a different wheel for NVidia and HIP
+ - `gputil` - NVidia specific, also broken dependencies (as of 2025)
+ - `gpuinfo` - NVidia specific, broken `import gpuinfo`...
+ - `gpuinfonv` - NVidia specific, requires pynvml
+ - `pyamdgpuinfo` - AMD specific
+ - `igpu` - NVidia specific, broken installation (as of 2025)
+ - and so on...
 
 The primary functionality offered is:
  - check how many GPUs are available
@@ -33,7 +42,7 @@ For GPUs to be properly reported, the libraries have to be found by the dynamic 
 
 Return the number of available GPUs:
 ```python
-import gpuinfo as G
+import gpuq as G
 
 print(G.count()) # this includes GPUs from all providers, disregarding *_VISIBLE_DEVICES
 print(G.count(visible_only=True)) # only visible GPUs from all providers
@@ -43,7 +52,7 @@ print(G.count(provider=G.Provider.HIP, visible_only=True)) # only visible HIP de
 
 Return a list of gpu properties:
 ```python
-import gpuinfo as G
+import gpuq as G
 
 for gpu in G.query(visible_only=True, provider=G.Provider.ANY):
     print(gpu.name)
@@ -55,7 +64,7 @@ gpus = G.query(visible_only=True, provider=G.Provider.ANY, required=G.Provider.C
 
 Provide mapping between local and global GPU indices:
 ```python
-import gpuinfo as G
+import gpuq as G
 
 # assume a system with 8 GPUs and CUDA_VISIBLE_DEVICES=1,7
 for gpu in G.query(): # by default return visible GPUs only

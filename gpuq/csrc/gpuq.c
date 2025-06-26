@@ -53,7 +53,7 @@ static PyMemberDef GpuPropMembers[] = {
 
 static PyTypeObject GpuPropType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "gpuinfo.C.Properties",
+    .tp_name = "gpuq.C.Properties",
     .tp_doc = PyDoc_STR("A structure holding device properties of a GPU."),
     .tp_basicsize = sizeof(GpuProp),
     .tp_itemsize = 0,
@@ -81,7 +81,7 @@ static int get_gpu_count() {
 
 
 static PyObject*
-gpuinfo_checkcuda(PyObject* self, PyObject* args) {
+gpuq_checkcuda(PyObject* self, PyObject* args) {
     int status = checkCuda();
     if (!status) {
         status = cudaGetDeviceCount(&cudaDevices);
@@ -110,7 +110,7 @@ gpuinfo_checkcuda(PyObject* self, PyObject* args) {
 
 
 static PyObject*
-gpuinfo_checkamd(PyObject* self, PyObject* args) {
+gpuq_checkamd(PyObject* self, PyObject* args) {
     int status = checkCuda();
     if (!status) {
         status = amdGetDeviceCount(&amdDevices);
@@ -139,21 +139,21 @@ gpuinfo_checkamd(PyObject* self, PyObject* args) {
 
 
 static PyObject*
-gpuinfo_count(PyObject* self, PyObject* args) {
+gpuq_count(PyObject* self, PyObject* args) {
     int count = get_gpu_count();
     return PyLong_FromLong(count);
 }
 
 
 static PyObject*
-gpuinfo_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
+gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     if (nargs != 1) {
-        PyErr_SetString(PyExc_TypeError, "gpuinfo.C.get takes exactly 1 positional argument only.");
+        PyErr_SetString(PyExc_TypeError, "gpuq.C.get takes exactly 1 positional argument only.");
         return NULL;
     }
 
     int gpu_id = -1;
-    if (!PyArg_Parse(args[0], "i:gpuinfo.C.get", &gpu_id))
+    if (!PyArg_Parse(args[0], "i:gpuq.C.get", &gpu_id))
         return NULL;
 
     int dev_count = get_gpu_count();
@@ -195,21 +195,21 @@ gpuinfo_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 }
 
 
-static PyMethodDef gpuinfo_methods[] = {
-    {"checkcuda", gpuinfo_checkcuda, METH_NOARGS, "Return status code for CUDA runtime."},
-    {"checkamd", gpuinfo_checkamd, METH_NOARGS, "Return status code for HIP runtime."},
-    {"count", gpuinfo_count, METH_NOARGS, "Return the number of GPUs."},
-    {"get", (PyCFunction)gpuinfo_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
+static PyMethodDef gpuq_methods[] = {
+    {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for CUDA runtime."},
+    {"checkamd", gpuq_checkamd, METH_NOARGS, "Return status code for HIP runtime."},
+    {"count", gpuq_count, METH_NOARGS, "Return the number of GPUs."},
+    {"get", (PyCFunction)gpuq_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
     {NULL, NULL, 0, NULL}
 };
 
 
-static PyModuleDef gpuinfo = {
+static PyModuleDef gpuq = {
     .m_base = PyModuleDef_HEAD_INIT,
-    .m_name = "gpuinfo.C",
+    .m_name = "gpuq.C",
     .m_doc = "Module to query information about available gpus.",
     .m_size = -1,
-    .m_methods = gpuinfo_methods,
+    .m_methods = gpuq_methods,
 };
 
 
@@ -220,7 +220,7 @@ PyInit_C(void)
     if (PyType_Ready(&GpuPropType) < 0)
         return NULL;
 
-    m = PyModule_Create(&gpuinfo);
+    m = PyModule_Create(&gpuq);
     if (m == NULL)
         return NULL;
 

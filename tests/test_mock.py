@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import multiprocessing as mp
 
-import gpuinfo as G
+import gpuq as G
 
 
 def test_runtimes() -> None:

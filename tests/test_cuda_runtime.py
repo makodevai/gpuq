@@ -2,16 +2,16 @@ from typing import Generator, Callable
 from unittest.mock import patch
 from contextlib import contextmanager, ExitStack
 
-import gpuinfo.cuda
+import gpuq.cuda
 
 
 @contextmanager
 def mock_get_gpu_status() -> Generator[None, None, None]:
     with ExitStack() as stack:
-        stack.enter_context(patch("gpuinfo.cuda._get_num_gpus", return_value=1))
+        stack.enter_context(patch("gpuq.cuda._get_num_gpus", return_value=1))
         stack.enter_context(
             patch(
-                "gpuinfo.cuda.get_gpu_status",
+                "gpuq.cuda.get_gpu_status",
                 return_value={
                     "utilisation": 11,
                     "used_memory": 1552,
@@ -59,7 +59,7 @@ GPU 0: NVIDIA GeForce Mako (UUID: GPU-cae6066b-8667-ce45-a986-d93f33d8573f)
 def mock_nvidia_smi() -> Generator[None, None, None]:
     with ExitStack() as stack:
         stack.enter_context(
-            patch("gpuinfo.cuda._get_nvidia_smi_path", return_value="mock")
+            patch("gpuq.cuda._get_nvidia_smi_path", return_value="mock")
         )
         stack.enter_context(
             patch("subprocess.check_output", new_callable=get_mocked_nvidia_smi)
@@ -69,7 +69,7 @@ def mock_nvidia_smi() -> Generator[None, None, None]:
 
 def test_get_gpu_status_mock() -> None:
     with mock_get_gpu_status():
-        data = gpuinfo.cuda.get_gpu_status(0)
+        data = gpuq.cuda.get_gpu_status(0)
         assert data is not None
         assert data["utilisation"] == 11
         assert data["used_memory"] == 1552
@@ -78,7 +78,7 @@ def test_get_gpu_status_mock() -> None:
 
 def test_get_cuda_info_1() -> None:
     with mock_get_gpu_status():
-        data = gpuinfo.cuda.get_cuda_info(0)
+        data = gpuq.cuda.get_cuda_info(0)
         assert data is not None
         assert data.index == 0
         assert data.utilisation == 11
@@ -88,17 +88,17 @@ def test_get_cuda_info_1() -> None:
 
 def test_get_cuda_info_failing() -> None:
     with mock_get_gpu_status():
-        data = gpuinfo.cuda.get_cuda_info(1)
+        data = gpuq.cuda.get_cuda_info(1)
         assert data is None
 
 
 def test_get_cuda_info_nvidia_smi() -> None:
     with mock_nvidia_smi():
-        data = gpuinfo.cuda.get_cuda_info(0)
+        data = gpuq.cuda.get_cuda_info(0)
         assert data is not None
         assert data.utilisation == 81
         assert data.used_memory == 3546
         assert data.pids == [2806, 28690]
 
-        data2 = gpuinfo.cuda.get_cuda_info(1)
+        data2 = gpuq.cuda.get_cuda_info(1)
         assert data2 is None

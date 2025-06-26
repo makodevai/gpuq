@@ -35,7 +35,7 @@ class Properties:
 
     @property
     def ord(self) -> int:
-        """Ordinal of the GPU, across all providers and devices. Specific to the gpuinfo package."""
+        """Ordinal of the GPU, across all providers and devices. Specific to the gpuq package."""
         return self.cobj.ord  # type: ignore[no-any-return]
 
     @property
@@ -299,8 +299,8 @@ class MockCObj:
             del args["self"]
             del args["uuid"]
             args_str = str(args)
-            # namespace is hex of "mako_gpuinfo_mock" (possibly truncated)
-            uuid = uuid5(UUID("6d616b6f-5f67-7075-696e-666f5f6d6f63"), args_str).hex
+            # namespace is hex of (zero-padded) "mako_gpuq_mock"
+            uuid = uuid5(UUID("6d616b6f-5f67-7075-715f-6d6f636B0000"), args_str).hex
 
         self.ord = ord
         self.uuid = uuid

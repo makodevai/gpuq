@@ -3,7 +3,7 @@ from typing import Generator, Callable
 from unittest.mock import patch
 from contextlib import contextmanager, ExitStack
 
-import gpuinfo.hip
+import gpuq.hip
 
 
 _pid_gpus_output = b"""\
@@ -34,7 +34,7 @@ def mock_hip_tree() -> Generator[None, None, None]:
 
     with ExitStack() as stack:
         stack.enter_context(
-            patch("gpuinfo.hip._get_hip_nodes_info", return_value=hip_tree)
+            patch("gpuq.hip._get_hip_nodes_info", return_value=hip_tree)
         )
         stack.enter_context(
             patch("subprocess.check_output", return_value=_pid_gpus_output)
@@ -135,7 +135,7 @@ def mock_fs() -> Generator[None, None, None]:
         stack.enter_context(patch("os.path.exists", return_value=True))
         stack.enter_context(patch("os.listdir", return_value=["1", "2", "0"]))
         stack.enter_context(
-            patch("gpuinfo.hip._read_file", new_callable=get_mocked_read_file)
+            patch("gpuq.hip._read_file", new_callable=get_mocked_read_file)
         )
         stack.enter_context(
             patch("subprocess.check_output", return_value=_pid_gpus_output)
@@ -145,7 +145,7 @@ def mock_fs() -> Generator[None, None, None]:
 
 def test_get_hip_info_1() -> None:
     with mock_hip_tree():
-        data = gpuinfo.hip.get_hip_info(0)
+        data = gpuq.hip.get_hip_info(0)
         assert data is not None
         assert data.index == 0
         assert data.drm == 128
@@ -156,13 +156,13 @@ def test_get_hip_info_1() -> None:
 
 def test_get_hip_info_failure() -> None:
     with mock_hip_tree():
-        data = gpuinfo.hip.get_hip_info(1)
+        data = gpuq.hip.get_hip_info(1)
         assert data is None
 
 
 def test_get_hip_info_fs() -> None:
     with mock_fs():
-        data = gpuinfo.hip.get_hip_info(0)
+        data = gpuq.hip.get_hip_info(0)
         assert data is not None
         assert data.index == 0
         assert data.drm == 128
@@ -170,7 +170,7 @@ def test_get_hip_info_fs() -> None:
         assert data.node_idx == 2
         assert data.pids == [1949829, 10678]
 
-        data2 = gpuinfo.hip.get_hip_info(1)
+        data2 = gpuq.hip.get_hip_info(1)
         assert data2 is None
 
 
@@ -180,7 +180,7 @@ def test_hip_info_unordered_listdir() -> None:
             "os.listdir",
             return_value=["7", "5", "3", "1", "8", "6", "4", "2", "0", "9"],
         ):
-            data = gpuinfo.hip.get_hip_info(0)
+            data = gpuq.hip.get_hip_info(0)
             assert data is not None
             assert data.index == 0
             assert data.node_idx == 2
