@@ -60,16 +60,21 @@ jobs:
         with:
           report_paths: '**/junit/*.xml'
 
-      - name: Build package
-        if: github.event_name == 'push' && github.ref == 'main'
+      - name: Install cibuildwheel
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.os != 'ubuntu-22.04' && matrix.python_version == '3.13' }}
         run: |
           source .venv/bin/activate
-          pip install build
-          python -m build
+          pip install cibuildwheel
 
-      - name: Upload wheel
-        if: github.event_name == 'push' && github.ref == 'main'
+      - name: Build wheels
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.os != 'ubuntu-22.04' && matrix.python_version == '3.13' }}
+        run: |
+          source .venv/bin/activate
+          python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Upload wheels
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.os != 'ubuntu-22.04' && matrix.python_version == '3.13' }}
         uses: actions/upload-artifact@v4
         with:
-          name: python-package-distributions
-          path: dist/
+          name: cibw-wheels-${{ matrix.os }}-python-${{ matrix.python_version }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl

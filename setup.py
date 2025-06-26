@@ -12,7 +12,7 @@ import importlib.util
 from pathlib import Path
 
 package_name = 'gpuq'
-description = ''
+description = 'A multi-vendor GPU querying utility with minimal dependencies'
 author = 'Mako'
 author_email = 'support@mako.dev'
 url = 'https://github.com/makodevai/gpuq'

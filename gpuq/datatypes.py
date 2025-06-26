@@ -299,8 +299,8 @@ class MockCObj:
             del args["self"]
             del args["uuid"]
             args_str = str(args)
-            # namespace is hex of (zero-padded) "mako_gpuq_mock"
-            uuid = uuid5(UUID("6d616b6f-5f67-7075-715f-6d6f636B0000"), args_str).hex
+            # namespace is hex of (zero-padded) "mako_gpu_mock"
+            uuid = uuid5(UUID("6d616b6f-5f67-7075-5f6d-6f636B000000"), args_str).hex
 
         self.ord = ord
         self.uuid = uuid
