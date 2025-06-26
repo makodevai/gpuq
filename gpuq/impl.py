@@ -4,9 +4,7 @@ from types import TracebackType
 from typing import Any, ContextManager, Generator, Literal
 from contextlib import contextmanager
 
-from typing_extensions import Self
-
-from . import C  # type: ignore
+from . import C
 from .datatypes import Provider, MockCObj, Properties
 from .cuda import CudaRuntimeInfo, get_cuda_info, CudaRuntimeInfoMock
 from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
@@ -30,7 +28,7 @@ class Implementation(ABC):
         self._ctx: ContextManager["Implementation"] | None = None
 
     @abstractmethod
-    def provider_check(self, provider: Provider) -> bool: ...
+    def provider_check(self, provider: Provider) -> str: ...
 
     @abstractmethod
     def save_visible(self, clear: bool = True) -> ContextManager[Visible]: ...
@@ -52,7 +50,7 @@ class Implementation(ABC):
 
         return _set_impl(self)
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> "Implementation":
         from . import _with_impl
 
         self._ctx = _with_impl(self)
@@ -95,6 +93,21 @@ class Implementation(ABC):
 
         return get(idx=idx, provider=provider, visible_only=visible_only, impl=self)
 
+    def checkprovider(self, p: Provider) -> str:
+        from . import checkprovider
+
+        return checkprovider(p=p, impl=self)
+
+    def checkcuda(self) -> str:
+        from . import checkcuda
+
+        return checkcuda(impl=self)
+
+    def checkamd(self) -> str:
+        from . import checkamd
+
+        return checkamd(impl=self)
+
     def hasprovider(self, p: Provider) -> bool:
         from . import hasprovider
 
@@ -120,11 +133,11 @@ class Implementation(ABC):
 
 
 class GenuineImplementation(Implementation):
-    def provider_check(self, provider: Provider) -> bool:
+    def provider_check(self, provider: Provider) -> str:
         if provider == Provider.CUDA:
-            return bool(C.checkcuda() == 0)
+            return C.checkcuda()
         if provider == Provider.HIP:
-            return bool(C.checkamd() == 0)
+            return C.checkamd()
 
         raise ValueError(f"Invalid provider: {provider}")
 
@@ -269,11 +282,19 @@ class MockImplementation(Implementation):
         else:
             self.hip_visible = None
 
-    def provider_check(self, provider: Provider) -> bool:
+    def provider_check(self, provider: Provider) -> str:
         if provider == Provider.CUDA:
-            return self.cuda_count is not None
+            return (
+                ""
+                if self.cuda_count is not None
+                else "Mock implementation has not been configured to report CUDA runtime"
+            )
         if provider == Provider.HIP:
-            return self.hip_count is not None
+            return (
+                ""
+                if self.hip_count is not None
+                else "Mock implementation has not been configured to report HIP runtime"
+            )
 
         raise ValueError(f"Invalid provider: {provider}")
 

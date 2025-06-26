@@ -1,9 +1,9 @@
-import gpuinfo as G
+import gpuq as G
 
 
 def main() -> None:
     for p in G.Provider:
-        print(f'Has provider {p.name}:', G.hasprovider(p))
+        print(f"Has provider {p.name}:", G.hasprovider(p))
     print()
 
     all_ = G.query(visible_only=False)
@@ -21,5 +21,5 @@ def main() -> None:
         print(gpu)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -36,12 +36,14 @@ typedef struct {
 
 
 int checkCuda();
+const char* cudaGetErrStr(int status);
 int cudaGetDeviceCount(int* count);
 int cudaGetDeviceProps(int index, GpuProp* obj);
 void cudaClean();
 
 
 int checkAmd();
+const char* amdGetErrStr(int status);
 int amdGetDeviceCount(int* count);
 int amdGetDeviceProps(int index, GpuProp* obj);
 void amdClean();

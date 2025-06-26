@@ -3,10 +3,10 @@ from typing import Generator, Callable
 from unittest.mock import patch
 from contextlib import contextmanager, ExitStack
 
-import gpuinfo.hip
+import gpuq.hip
 
 
-_pid_gpus_output = b'''\
+_pid_gpus_output = b"""\
 
 
 ============================ ROCm System Management Interface ============================
@@ -23,18 +23,22 @@ PID 10678 is using 1 DRM device(s):
 0 
 ==========================================================================================
 ================================== End of ROCm SMI Log ===================================
-'''
+"""
 
 
 @contextmanager
 def mock_hip_tree() -> Generator[None, None, None]:
     hip_tree = [
-        {'gfx': '942', 'drm': 128, 'node': 2},
+        {"gfx": "942", "drm": 128, "node": 2},
     ]
 
     with ExitStack() as stack:
-        stack.enter_context(patch("gpuinfo.hip._get_hip_nodes_info", return_value=hip_tree))
-        stack.enter_context(patch("subprocess.check_output", return_value=_pid_gpus_output))
+        stack.enter_context(
+            patch("gpuq.hip._get_hip_nodes_info", return_value=hip_tree)
+        )
+        stack.enter_context(
+            patch("subprocess.check_output", return_value=_pid_gpus_output)
+        )
         yield
 
 
@@ -46,7 +50,7 @@ def get_mocked_read_file() -> Callable[[str], str]:
         if node_idx < 0 or node_idx > 9:
             raise FileNotFoundError()
         if node_idx < 2:
-            return '''\
+            return """\
 cpu_cores_count 96
 simd_count 0
 mem_banks_count 1
@@ -77,9 +81,9 @@ num_sdma_xgmi_engines 0
 num_sdma_queues_per_engine 0
 num_cp_queues 0
 max_engine_clk_ccompute 2400
-'''
+"""
 
-        return '''\
+        return """\
 cpu_cores_count 0
 simd_count 1216
 mem_banks_count 1
@@ -118,7 +122,9 @@ sdma_fw_version 22
 unique_id 4376936076086227261
 num_xcc 8
 max_engine_clk_ccompute 2400
-'''.format(128 + (node_idx-2)*8)
+""".format(
+            128 + (node_idx - 2) * 8
+        )
 
     return mocked_read_file
 
@@ -127,15 +133,19 @@ max_engine_clk_ccompute 2400
 def mock_fs() -> Generator[None, None, None]:
     with ExitStack() as stack:
         stack.enter_context(patch("os.path.exists", return_value=True))
-        stack.enter_context(patch("os.listdir", return_value=['1', '2', '0']))
-        stack.enter_context(patch("gpuinfo.hip._read_file", new_callable=get_mocked_read_file))
-        stack.enter_context(patch("subprocess.check_output", return_value=_pid_gpus_output))
+        stack.enter_context(patch("os.listdir", return_value=["1", "2", "0"]))
+        stack.enter_context(
+            patch("gpuq.hip._read_file", new_callable=get_mocked_read_file)
+        )
+        stack.enter_context(
+            patch("subprocess.check_output", return_value=_pid_gpus_output)
+        )
         yield
 
 
 def test_get_hip_info_1() -> None:
     with mock_hip_tree():
-        data = gpuinfo.hip.get_hip_info(0)
+        data = gpuq.hip.get_hip_info(0)
         assert data is not None
         assert data.index == 0
         assert data.drm == 128
@@ -146,13 +156,13 @@ def test_get_hip_info_1() -> None:
 
 def test_get_hip_info_failure() -> None:
     with mock_hip_tree():
-        data = gpuinfo.hip.get_hip_info(1)
+        data = gpuq.hip.get_hip_info(1)
         assert data is None
 
 
 def test_get_hip_info_fs() -> None:
     with mock_fs():
-        data = gpuinfo.hip.get_hip_info(0)
+        data = gpuq.hip.get_hip_info(0)
         assert data is not None
         assert data.index == 0
         assert data.drm == 128
@@ -160,14 +170,17 @@ def test_get_hip_info_fs() -> None:
         assert data.node_idx == 2
         assert data.pids == [1949829, 10678]
 
-        data2 = gpuinfo.hip.get_hip_info(1)
+        data2 = gpuq.hip.get_hip_info(1)
         assert data2 is None
 
 
 def test_hip_info_unordered_listdir() -> None:
     with mock_fs():
-        with patch("os.listdir", return_value=['7', '5', '3', '1', '8', '6', '4', '2', '0', '9']):
-            data = gpuinfo.hip.get_hip_info(0)
+        with patch(
+            "os.listdir",
+            return_value=["7", "5", "3", "1", "8", "6", "4", "2", "0", "9"],
+        ):
+            data = gpuq.hip.get_hip_info(0)
             assert data is not None
             assert data.index == 0
             assert data.node_idx == 2

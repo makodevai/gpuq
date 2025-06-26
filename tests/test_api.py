@@ -1,18 +1,18 @@
 import os
-import gpuinfo as G
-from gpuinfo import _set_impl, _with_impl, _get_impl
-from gpuinfo.impl import GenuineImplementation, MockImplementation
+import gpuq as G
+from gpuq import _set_impl, _with_impl, _get_impl
+from gpuq.impl import GenuineImplementation, MockImplementation
 
 
 def test_default_is_mock() -> None:
     assert isinstance(G.default_impl, GenuineImplementation)
 
     G._default_impl = None
-    os.environ['MAKO_MOCK_GPU'] = '1'
+    os.environ["MAKO_MOCK_GPU"] = "1"
     try:
         assert isinstance(G.default_impl, MockImplementation)
     finally:
-        del os.environ['MAKO_MOCK_GPU']
+        del os.environ["MAKO_MOCK_GPU"]
 
 
 def test_default_impl() -> None:
@@ -102,7 +102,6 @@ def test_obj_api_count_visible() -> None:
 
     assert G.count(visible_only=False, impl=impl) == impl.count(visible_only=False)
     assert G.count(visible_only=True, impl=impl) == impl.count(visible_only=True)
-
 
 
 def test_obj_api_get() -> None:

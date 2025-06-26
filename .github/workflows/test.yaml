@@ -34,9 +34,12 @@ jobs:
           python-version: ${{ matrix.python_version }}
           cache: 'pip' # caching pip dependencies
 
-      - name: Install package with dependencies
+      - name: Create virtual env
         run: |
           python -m venv .venv
+
+      - name: Install package with dependencies
+        run: |
           source .venv/bin/activate
           pip install -e '.[dev]'
           mkdir -p junit
@@ -44,7 +47,7 @@ jobs:
       - name: Mypy
         run: |
           source .venv/bin/activate
-          mypy --strict gpuinfo tests --junit-xml=junit/mypy-results.xml
+          mypy --strict gpuq tests --junit-xml=junit/mypy-results.xml
 
       - name: Tests
         run: |
@@ -56,3 +59,17 @@ jobs:
         if: success() || failure() # always run even if the previous step fails
         with:
           report_paths: '**/junit/*.xml'
+
+      - name: Build package
+        if: github.event_name == 'push' && github.ref == 'main'
+        run: |
+          source .venv/bin/activate
+          pip install build
+          python -m build
+
+      - name: Upload wheel
+        if: github.event_name == 'push' && github.ref == 'main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/

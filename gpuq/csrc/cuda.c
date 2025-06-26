@@ -254,13 +254,13 @@ typedef enum cudaError cudaError_t;
 
 typedef cudaError_t (*cudaGetDeviceProperties_t)(struct cudaDeviceProp* prop, int deviceId);
 typedef cudaError_t (*cudaGetDeviceCount_t)(int* count);
-
+typedef const char* (*cudaGetErrorString_t)(cudaError_t error);
 
 
 static void* cuda_runtime_dl = NULL;
 static cudaGetDeviceCount_t device_count_fn = NULL;
 static cudaGetDeviceProperties_t device_props_fn = NULL;
-
+static cudaGetErrorString_t error_str_fn = NULL;
 
 
 static int try_load_cudaruntime() {
@@ -285,12 +285,28 @@ static int try_load_cudaruntime() {
         }
     }
 
+    if (!error_str_fn) {
+        error_str_fn = (cudaGetErrorString_t)dlsym(cuda_runtime_dl, "cudaGetErrorString");
+        if (!error_str_fn)
+            return -4;
+    }
+
     return 0;
 }
 
 
 int checkCuda() {
     return try_load_cudaruntime();
+}
+
+
+const char* cudaGetErrStr(int status) {
+    try_load_cudaruntime();
+    if (!error_str_fn)
+        return NULL;
+    if (!status)
+        return "";
+    return error_str_fn(status);
 }
 
 

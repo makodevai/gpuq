@@ -290,11 +290,13 @@ typedef enum hipError_t {
 
 typedef hipError_t (*hipGetDeviceProperties_t)(hipDeviceProp_t* prop, int deviceId);
 typedef hipError_t (*hipGetDeviceCount_t)(int* count);
+typedef const char* (*hipGetErrorString_t)(hipError_t error);
 
 
 static void* hip_runtime_dl = NULL;
 static hipGetDeviceCount_t device_count_fn = NULL;
 static hipGetDeviceProperties_t device_props_fn = NULL;
+static hipGetErrorString_t error_str_fn = NULL;
 
 
 static int try_load_hipruntime() {
@@ -316,12 +318,28 @@ static int try_load_hipruntime() {
             return -3;
     }
 
+    if (!error_str_fn) {
+        error_str_fn = (hipGetErrorString_t)dlsym(hip_runtime_dl, "hipGetErrorString");
+        if (!error_str_fn)
+            return -4;
+    }
+
     return 0;
 }
 
 
 int checkAmd() {
     return try_load_hipruntime();
+}
+
+
+const char* amdGetErrStr(int status) {
+    try_load_hipruntime();
+    if (!error_str_fn)
+        return NULL;
+    if (!status)
+        return "";
+    return error_str_fn(status);
 }
 
 

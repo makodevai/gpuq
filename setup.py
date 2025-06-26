@@ -11,17 +11,19 @@ from setuptools.command.build_py import build_py
 import importlib.util
 from pathlib import Path
 
-package_name = 'gpuinfo'
+package_name = 'gpuq'
 description = ''
 author = 'Mako'
-author_email = 'lukasz@mako-dev.com'
-url = 'https://github.com/makodevai/gpuinfo'
-download_url = 'https://github.com/makodevai/gpuinfo'
+author_email = 'support@mako.dev'
+url = 'https://github.com/makodevai/gpuq'
+download_url = 'https://github.com/makodevai/gpuq'
 data_files = {}
 
 version_file = Path(__file__).parent.joinpath(package_name, 'version.py')
 spec = importlib.util.spec_from_file_location('{}.version'.format(package_name), version_file)
+assert spec is not None
 package_version = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
 spec.loader.exec_module(package_version)
 
 long_desc = None
@@ -37,7 +39,7 @@ license = Path(__file__).parent.joinpath('LICENSE')
 if license.exists():
     data_files.setdefault('', []).append(license.name)
 
-data_files.setdefault('', []).append(str(Path(__file__).parent.joinpath('gpuinfo', 'csrc', 'types.h')))
+data_files.setdefault('', []).append(str(Path(__file__).parent.joinpath('gpuq', 'csrc', 'types.h')))
 data_files.setdefault(package_name, []).append('py.typed')
 
 
@@ -48,7 +50,7 @@ class dist_info_mixin:
             map(lambda attr_name: attr_name + ' = ' + repr(getattr(package_version, attr_name)),
                 package_version.__all__)) + '\n')
         try:
-            ret = super().run()
+            ret = super().run() # type: ignore
         finally:
             _dist_file.unlink()
         return ret
@@ -69,12 +71,9 @@ setup(name=package_name,
     author_email=author_email,
     url=url,
     download_url=download_url,
-    long_description=long_desc,
-    long_description_content_type=long_desc_type,
+    long_description=long_desc or "",
+    long_description_content_type=long_desc_type or "",
     python_requires='>=3.10.0',
-    install_requires=[
-        'typing_extensions'
-    ],
     extras_require={
         "dev": [
             "GitPython",
@@ -83,7 +82,7 @@ setup(name=package_name,
             "pytest"
         ]
     },
-    packages=find_packages(where='.', include=['gpuinfo', 'gpuinfo.*']),
+    packages=find_packages(where='.', include=['gpuq', 'gpuq.*']),
     package_data=data_files,
     package_dir={ '': '.' },
     cmdclass={
@@ -91,6 +90,6 @@ setup(name=package_name,
         'build_py': custom_wheel
     },
     ext_modules=[
-        Extension("gpuinfo.C", ["gpuinfo/csrc/gpuinfo.c", "gpuinfo/csrc/amd.c", "gpuinfo/csrc/cuda.c"], extra_compile_args=['-O0', '-g'])
+        Extension("gpuq.C", ["gpuq/csrc/gpuq.c", "gpuq/csrc/amd.c", "gpuq/csrc/cuda.c"], extra_compile_args=['-O3'])
     ],
 )
