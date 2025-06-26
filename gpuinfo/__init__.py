@@ -115,9 +115,9 @@ def query(
     if required:
         for p in Provider:
             if p & required:
-                if not impl.provider_check(p):
+                if err := impl.provider_check(p):
                     raise RuntimeError(
-                        f"Provider {p.name} is required but the relevant runtime is missing from the system!"
+                        f"Provider {p.name} is required but the relevant runtime is missing from the system or failed to load, error: {err}!"
                     )
 
     with impl.save_visible() as visible:
@@ -234,22 +234,48 @@ def get(
         return ret[idx]
 
 
-def hasprovider(p: Provider, impl: Implementation | None = None) -> bool:
+def checkprovider(p: Provider, impl: Implementation | None = None) -> str:
+    """Return error string if a runtime error occurred while checking for
+    the presence of a given provider. Otherwise returns an empty string.
+
+    Runtime errors include any dynamic linker errors or errors
+    originating from a relevant downstream runtime, which occurred
+    while querying the number of available GPUs.
+    """
     if impl is None:
         impl = _get_impl()
     return impl.provider_check(p)
 
 
-def hascuda(impl: Implementation | None = None) -> bool:
+def checkcuda(impl: Implementation | None = None) -> str:
+    """Shorthand for `checkprovider(Provider.CUDA)`"""
     if impl is None:
         impl = _get_impl()
     return impl.provider_check(Provider.CUDA)
 
 
-def hasamd(impl: Implementation | None = None) -> bool:
+def checkamd(impl: Implementation | None = None) -> str:
+    """Shorthand for `checkprovider(Provider.HIP)`"""
     if impl is None:
         impl = _get_impl()
     return impl.provider_check(Provider.HIP)
+
+
+def hasprovider(p: Provider, impl: Implementation | None = None) -> bool:
+    """Return true if the given provider is available on the system.
+    This does not yet mean that any devices from that provider are present.
+
+    Calling this function is equivalent to checking `checkprovider(p) == ""`
+    """
+    return not checkprovider(p, impl)
+
+
+def hascuda(impl: Implementation | None = None) -> bool:
+    return not checkcuda(impl)
+
+
+def hasamd(impl: Implementation | None = None) -> bool:
+    return not checkamd(impl)
 
 
 def mock(

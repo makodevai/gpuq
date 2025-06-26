@@ -8,9 +8,9 @@ if [ -z "$VIRTUAL_ENV" ]; then
 fi
 
 if [ "$1" == "-f" ]; then
-  black gpuinfo
+  black gpuinfo tests
 else
-  black --check gpuinfo
+  black --check gpuinfo test
 fi;
 
 mypy --strict gpuinfo tests

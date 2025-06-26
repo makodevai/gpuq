@@ -74,14 +74,14 @@ def test_visible_hip_from_cuda() -> None:
         # then the CUDA variable is inherited
         assert G.count(visible_only=True) == 1
 
-    with G.mock(cuda_count=None, hip_count=2, cuda_visible=[0], hip_visible=[0,1]):
+    with G.mock(cuda_count=None, hip_count=2, cuda_visible=[0], hip_visible=[0, 1]):
         assert G.count(visible_only=True) == 2
 
 
 def test_visible_hip_from_cuda_2() -> None:
     with G.mock(cuda_count=2, hip_count=2, cuda_visible=[1]):
         assert G.count(visible_only=False) == 4
-        assert G.count(visible_only=True) == 2 # see test case above why
+        assert G.count(visible_only=True) == 2  # see test case above why
 
         assert G.count(G.Provider.CUDA, visible_only=False) == 2
         assert G.count(G.Provider.HIP, visible_only=False) == 2
@@ -113,24 +113,24 @@ def test_query_filtering() -> None:
 
 def test_default_names() -> None:
     with G.mock(cuda_count=1):
-        assert G.get(0).name == 'CUDA Mock Device'
+        assert G.get(0).name == "CUDA Mock Device"
 
     with G.mock(cuda_count=None, hip_count=1):
-        assert G.get(0).name == 'HIP Mock Device'
+        assert G.get(0).name == "HIP Mock Device"
 
     with G.mock(cuda_count=1, hip_count=1):
-        assert G.get(0).name == 'CUDA Mock Device'
-        assert G.get(1).name == 'HIP Mock Device'
+        assert G.get(0).name == "CUDA Mock Device"
+        assert G.get(1).name == "HIP Mock Device"
 
 
 def test_uuid_uniqueness() -> None:
     with G.mock(cuda_count=16, hip_count=None):
         gpus = G.query()
-        uuids_nvidia = { gpu.uuid for gpu in gpus }
+        uuids_nvidia = {gpu.uuid for gpu in gpus}
 
     with G.mock(cuda_count=None, hip_count=16):
         gpus = G.query()
-        uuids_amd = { gpu.uuid for gpu in gpus }
+        uuids_amd = {gpu.uuid for gpu in gpus}
 
     assert len(uuids_nvidia) == 16
     assert len(uuids_amd) == 16
@@ -164,11 +164,14 @@ def test_uuid_args() -> None:
 
 
 def test_hip_runtime() -> None:
-    with G.mock(cuda_count=None, hip_count=1,
-                hip_drm=128,
-                hip_gfx="942",
-                hip_node_idx=2,
-                hip_pids=[1,1024]):
+    with G.mock(
+        cuda_count=None,
+        hip_count=1,
+        hip_drm=128,
+        hip_gfx="942",
+        hip_node_idx=2,
+        hip_pids=[1, 1024],
+    ):
         gpu = G.get(0)
         assert gpu.cuda_info is None
         assert gpu.hip_info is not None
@@ -180,10 +183,13 @@ def test_hip_runtime() -> None:
 
 
 def test_cuda_runtime() -> None:
-    with G.mock(cuda_count=1, hip_count=None,
-                cuda_utilisation=11,
-                cuda_memory=1552,
-                cuda_pids=[1, 1024]):
+    with G.mock(
+        cuda_count=1,
+        hip_count=None,
+        cuda_utilisation=11,
+        cuda_memory=1552,
+        cuda_pids=[1, 1024],
+    ):
         gpu = G.get(0)
         assert gpu.cuda_info is not None
         assert gpu.hip_info is None

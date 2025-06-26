@@ -14,14 +14,16 @@ from pathlib import Path
 package_name = 'gpuinfo'
 description = ''
 author = 'Mako'
-author_email = 'lukasz@mako-dev.com'
+author_email = 'lukasz@mako.dev'
 url = 'https://github.com/makodevai/gpuinfo'
 download_url = 'https://github.com/makodevai/gpuinfo'
 data_files = {}
 
 version_file = Path(__file__).parent.joinpath(package_name, 'version.py')
 spec = importlib.util.spec_from_file_location('{}.version'.format(package_name), version_file)
+assert spec is not None
 package_version = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
 spec.loader.exec_module(package_version)
 
 long_desc = None
@@ -69,12 +71,9 @@ setup(name=package_name,
     author_email=author_email,
     url=url,
     download_url=download_url,
-    long_description=long_desc,
-    long_description_content_type=long_desc_type,
+    long_description=long_desc or "",
+    long_description_content_type=long_desc_type or "",
     python_requires='>=3.10.0',
-    install_requires=[
-        'typing_extensions'
-    ],
     extras_require={
         "dev": [
             "GitPython",

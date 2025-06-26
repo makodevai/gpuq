@@ -25,9 +25,6 @@
 #endif
 
 
-
-
-
 static PyMemberDef GpuPropMembers[] = {
     {"ord", Py_T_INT, offsetof(GpuProp, ord), 0, "GPU ordinal, across all devices and providers, specific to this package"},
     {"uuid", Py_T_STRING, offsetof(GpuProp, uuid), 0, "Device UUID"},
@@ -72,20 +69,12 @@ static int amdDevices = 0;
 
 static int get_gpu_count() {
     int status = cudaGetDeviceCount(&cudaDevices);
-    if (status < 0)
+    if (status != 0)
         cudaDevices = 0;
-    else if (status > 0) {
-        PyErr_SetString(PyExc_RuntimeError, "cudaGetDeviceCount failed");
-        return -1;
-    }
 
     status = amdGetDeviceCount(&amdDevices);
-    if (status < 0)
+    if (status != 0)
         amdDevices = 0;
-    else if (status > 0) {
-        PyErr_SetString(PyExc_RuntimeError, "hipGetDeviceCount failed");
-        return -1;
-    }
 
     return cudaDevices + amdDevices;
 }
@@ -93,22 +82,65 @@ static int get_gpu_count() {
 
 static PyObject*
 gpuinfo_checkcuda(PyObject* self, PyObject* args) {
-    return PyLong_FromLong(checkCuda());
+    int status = checkCuda();
+    if (!status) {
+        status = cudaGetDeviceCount(&cudaDevices);
+        if (status)
+             cudaDevices = 0;
+    }
+
+    switch (status) {
+    case 0:
+        Py_RETURN_NONE;
+    case -1:
+        return PyUnicode_InternFromString("Could not load libcudart.so");
+    case -2:
+        return PyUnicode_InternFromString("Could not resolve cudaGetDeviceCount");
+    case -3:
+        return PyUnicode_InternFromString("Could not resolve cudaGetDeviceProperties");
+    case -4:
+        return PyUnicode_InternFromString("Could not resolve cudaGetErrorString");
+    default:
+        return PyUnicode_InternFromString(cudaGetErrStr(status));
+    }
+
+
+    Py_RETURN_NONE;
 }
 
 
 static PyObject*
 gpuinfo_checkamd(PyObject* self, PyObject* args) {
-    return PyLong_FromLong(checkAmd());
-}
+    int status = checkCuda();
+    if (!status) {
+        status = amdGetDeviceCount(&amdDevices);
+        if (status)
+             amdDevices = 0;
+    }
 
+    switch (status) {
+    case 0:
+        Py_RETURN_NONE;
+    case -1:
+        return PyUnicode_InternFromString("Could not load libamdhip64.so");
+    case -2:
+        return PyUnicode_InternFromString("Could not resolve hipGetDeviceCount");
+    case -3:
+        return PyUnicode_InternFromString("Could not resolve hipGetDeviceProperties");
+    case -4:
+        return PyUnicode_InternFromString("Could not resolve hipGetErrorString");
+    default:
+        return PyUnicode_InternFromString(amdGetErrStr(status));
+    }
+
+
+    Py_RETURN_NONE;
+}
 
 
 static PyObject*
 gpuinfo_count(PyObject* self, PyObject* args) {
     int count = get_gpu_count();
-    if (count < 0)
-        return NULL;
     return PyLong_FromLong(count);
 }
 
