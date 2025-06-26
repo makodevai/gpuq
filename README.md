@@ -40,6 +40,11 @@ For GPUs to be properly reported, the libraries have to be found by the dynamic 
 
 ## Examples
 
+Install with:
+```bash
+pip install gpuq
+```
+
 Return the number of available GPUs:
 ```python
 import gpuq as G
