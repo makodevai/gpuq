@@ -1,4 +1,6 @@
 import os
+import site
+import itertools
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Any, ContextManager, Generator, Literal
@@ -8,6 +10,30 @@ from . import C
 from .datatypes import Provider, MockCObj, Properties
 from .cuda import CudaRuntimeInfo, get_cuda_info, CudaRuntimeInfoMock
 from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
+
+
+def _restore_default_hints() -> None:
+    sites = site.getsitepackages().copy()
+    if site.ENABLE_USER_SITE:
+        sites.extend(site.getusersitepackages())
+
+    loc_hints = ["/opt/cuda/targets/x86_64-linux/lib/", "/opt/rocm/lib/"] + list(
+        itertools.chain.from_iterable(
+            [
+                os.path.join(loc, "nvidia/cuda_runtime/lib/"),
+                os.path.join(loc, "torch/lib/"),
+                os.path.join(loc, "triton/lib/"),
+            ]
+            for loc in sites
+        )
+    )
+
+    loc_hints_ascii = [loc.encode("ascii") for loc in loc_hints]
+
+    C._set_location_hints(loc_hints_ascii)
+
+
+_restore_default_hints()
 
 
 Visible = dict[Provider, list[int] | None]

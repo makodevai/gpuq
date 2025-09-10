@@ -5,6 +5,15 @@
 #include <Python.h>
 
 
+#define MAX_HINTS 16
+#define MAX_HINT_LEN 127
+#define HIN_OVEARHEAD 32
+
+extern char _hints[MAX_HINTS][MAX_HINT_LEN + HIN_OVEARHEAD + 1];
+extern int _hints_len[MAX_HINTS];
+extern int _num_hints;
+
+
 typedef struct {
     PyObject_HEAD
     int ord;

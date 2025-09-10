@@ -25,6 +25,11 @@
 #endif
 
 
+char _hints[MAX_HINTS][MAX_HINT_LEN + HIN_OVEARHEAD + 1] = {0};
+int _hints_len[MAX_HINTS] = {0};
+int _num_hints = 0;
+
+
 static PyMemberDef GpuPropMembers[] = {
     {"ord", Py_T_INT, offsetof(GpuProp, ord), 0, "GPU ordinal, across all devices and providers, specific to this package"},
     {"uuid", Py_T_STRING, offsetof(GpuProp, uuid), 0, "Device UUID"},
@@ -195,11 +200,54 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 }
 
 
+static PyObject*
+gpuq__set_location_hints(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "gpuq._set_location_hints takes exactly 1 positional argument only.");
+        return NULL;
+    }
+
+    PyObject* arg = args[0];
+    if (!PyList_Check(arg)) {
+        PyErr_SetString(PyExc_TypeError, "gpuq._set_location_hints argument should be a list.");
+        return NULL;
+    }
+
+    int len = PyList_Size(arg);
+    if (len > MAX_HINTS) {
+        PyErr_SetString(PyExc_ValueError, "gpuq._set_location_hints too many hints.");
+        return NULL;
+    }
+
+    for (int i=0; i<len; ++i) {
+        PyObject* el = PyList_GetItem(arg, i);
+        if (!PyBytes_Check(el)) {
+            PyErr_SetString(PyExc_TypeError, "gpuq._set_location_hints list element should be a bytes object.");
+            return NULL;
+        }
+
+        int el_len = PyBytes_Size(el);
+        if (el_len < 0 || el_len > MAX_HINT_LEN) {
+            PyErr_SetString(PyExc_ValueError, "gpuq._set_location_hints list element too long.");
+            return NULL;
+        }
+
+        const char* el_buff = PyBytes_AsString(el);
+        memcpy(_hints[i], el_buff, el_len);
+        _hints_len[i] = el_len;
+    }
+
+    _num_hints = len;
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef gpuq_methods[] = {
     {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for CUDA runtime."},
     {"checkamd", gpuq_checkamd, METH_NOARGS, "Return status code for HIP runtime."},
     {"count", gpuq_count, METH_NOARGS, "Return the number of GPUs."},
     {"get", (PyCFunction)gpuq_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
+    {"_set_location_hints", (PyCFunction)gpuq__set_location_hints, METH_FASTCALL, "(internal) set location hints for dlopen."},
     {NULL, NULL, 0, NULL}
 };
 
