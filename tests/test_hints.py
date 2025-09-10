@@ -5,8 +5,8 @@ import gpuq.impl
 import gpuq.C
 
 
-max_hints = 16
-max_hint_len = 127
+max_hints = gpuq.C._get_max_hints()
+max_hint_len = gpuq.C._get_max_hint_len()
 
 
 @pytest.fixture(autouse=True)

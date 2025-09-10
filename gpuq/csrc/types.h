@@ -5,7 +5,7 @@
 #include <Python.h>
 
 
-#define MAX_HINTS 16
+#define MAX_HINTS 32
 #define MAX_HINT_LEN 127
 #define HIN_OVEARHEAD 32
 

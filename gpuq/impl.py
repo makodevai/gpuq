@@ -15,7 +15,7 @@ from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
 def _restore_default_hints() -> None:
     sites = site.getsitepackages().copy()
     if site.ENABLE_USER_SITE:
-        sites.extend(site.getusersitepackages())
+        sites.append(site.getusersitepackages())
 
     loc_hints = ["/opt/cuda/targets/x86_64-linux/lib/", "/opt/rocm/lib/"] + list(
         itertools.chain.from_iterable(
@@ -33,7 +33,12 @@ def _restore_default_hints() -> None:
     C._set_location_hints(loc_hints_ascii)
 
 
-_restore_default_hints()
+try:
+    _restore_default_hints()
+except ValueError as e:
+    raise ValueError(
+        f"Failed to configure loading hints for the library! Site locations: {site.getsitepackages()} and {site.getusersitepackages()}"
+    ) from e
 
 
 Visible = dict[Provider, list[int] | None]
