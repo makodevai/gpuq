@@ -267,6 +267,24 @@ static int try_load_cudaruntime() {
     if (!cuda_runtime_dl) {
         cuda_runtime_dl = dlopen("libcudart.so", RTLD_NOW|RTLD_LOCAL);
         if (!cuda_runtime_dl)
+            cuda_runtime_dl = dlopen("libcudart.so.12", RTLD_NOW|RTLD_LOCAL);
+
+        if (!cuda_runtime_dl) {
+            for (int i=0; i<_num_hints; ++i) {
+                strcpy(_hints[i] + _hints_len[i], "libcudart.so");
+                cuda_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
+                _hints[i][_hints_len[i]] = 0;
+                if (cuda_runtime_dl)
+                    break;
+                strcpy(_hints[i] + _hints_len[i], "libcudart.so.12");
+                cuda_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
+                _hints[i][_hints_len[i]] = 0;
+                if (cuda_runtime_dl)
+                    break;
+            }
+        }
+
+        if (!cuda_runtime_dl)
             return -1;
     }
 
