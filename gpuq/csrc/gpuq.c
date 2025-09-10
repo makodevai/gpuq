@@ -242,12 +242,26 @@ gpuq__set_location_hints(PyObject* self, PyObject* const* args, Py_ssize_t nargs
 }
 
 
+static PyObject*
+gpuq__get_max_hints(PyObject* self, PyObject* args) {
+    return PyLong_FromLong(MAX_HINTS);
+}
+
+
+static PyObject*
+gpuq__get_max_hint_len(PyObject* self, PyObject* args) {
+    return PyLong_FromLong(MAX_HINT_LEN);
+}
+
+
 static PyMethodDef gpuq_methods[] = {
     {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for CUDA runtime."},
     {"checkamd", gpuq_checkamd, METH_NOARGS, "Return status code for HIP runtime."},
     {"count", gpuq_count, METH_NOARGS, "Return the number of GPUs."},
     {"get", (PyCFunction)gpuq_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
     {"_set_location_hints", (PyCFunction)gpuq__set_location_hints, METH_FASTCALL, "(internal) set location hints for dlopen."},
+    {"_get_max_hints", gpuq__get_max_hints, METH_NOARGS, "(internal) return the maximum number of hints that can be passed."},
+    {"_get_max_hint_len", gpuq__get_max_hint_len, METH_NOARGS, "(internal) return the maximum length of a single hint."},
     {NULL, NULL, 0, NULL}
 };
 
