@@ -12,9 +12,6 @@ _current_implementation = local()
 _default_impl = None
 
 
-default_impl: Implementation
-
-
 def _get_default_impl() -> Implementation:
     global _default_impl
     if _default_impl is not None:
@@ -350,6 +347,13 @@ def _get_commit() -> str:
     return version.commit
 
 
+__version__: str
+__has_repo__: bool
+__repo__: str
+__commit__: str
+default_impl: Implementation
+
+
 add_module_properties(
     __name__,
     {
@@ -373,4 +377,9 @@ __all__ = [
     "hasamd",
     "mock",
     "genuine",
+    "__version__",
+    "__has_repo__",
+    "__repo__",
+    "__commit__",
+    "default_impl",
 ]
