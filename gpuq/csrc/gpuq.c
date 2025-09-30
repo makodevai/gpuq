@@ -1,5 +1,6 @@
 #include "types.h"
 #include <stddef.h>
+#include <dlfcn.h>
 
 #include "patchlevel.h"
 
@@ -94,11 +95,14 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
              cudaDevices = 0;
     }
 
+    const char* error_str = NULL;
+
     switch (status) {
     case 0:
         Py_RETURN_NONE;
     case -1:
-        return PyUnicode_InternFromString("Could not load libcudart.so");
+        error_str = cudaGetDlError();
+        return PyUnicode_FromFormat("%s: %s", "Could not load libcudart.so", (error_str ? error_str : "(unknown)"));
     case -2:
         return PyUnicode_InternFromString("Could not resolve cudaGetDeviceCount");
     case -3:
@@ -109,25 +113,27 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
         return PyUnicode_InternFromString(cudaGetErrStr(status));
     }
 
-
     Py_RETURN_NONE;
 }
 
 
 static PyObject*
 gpuq_checkamd(PyObject* self, PyObject* args) {
-    int status = checkCuda();
+    int status = checkAmd();
     if (!status) {
         status = amdGetDeviceCount(&amdDevices);
         if (status)
              amdDevices = 0;
     }
 
+    const char* error_str = NULL;
+
     switch (status) {
     case 0:
         Py_RETURN_NONE;
     case -1:
-        return PyUnicode_InternFromString("Could not load libamdhip64.so");
+        error_str = amdGetDlError();
+        return PyUnicode_FromFormat("%s: %s", "Could not load libamdhip64.so", (error_str ? error_str : "(unknown)"));
     case -2:
         return PyUnicode_InternFromString("Could not resolve hipGetDeviceCount");
     case -3:
@@ -137,7 +143,6 @@ gpuq_checkamd(PyObject* self, PyObject* args) {
     default:
         return PyUnicode_InternFromString(amdGetErrStr(status));
     }
-
 
     Py_RETURN_NONE;
 }

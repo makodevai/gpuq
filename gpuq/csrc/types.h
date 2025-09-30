@@ -45,6 +45,7 @@ typedef struct {
 
 
 int checkCuda();
+const char* cudaGetDlError();
 const char* cudaGetErrStr(int status);
 int cudaGetDeviceCount(int* count);
 int cudaGetDeviceProps(int index, GpuProp* obj);
@@ -52,10 +53,15 @@ void cudaClean();
 
 
 int checkAmd();
+const char* amdGetDlError();
 const char* amdGetErrStr(int status);
 int amdGetDeviceCount(int* count);
 int amdGetDeviceProps(int index, GpuProp* obj);
 void amdClean();
+
+
+// utils
+void record_dl_error(const char** dl_error_buffer, size_t* dl_error_len, int append);
 
 
 static inline void bytes_to_hex(const char* in, char* out, int bytes_len) {
