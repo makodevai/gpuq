@@ -256,6 +256,8 @@ typedef cudaError_t (*cudaGetDeviceProperties_t)(struct cudaDeviceProp* prop, in
 typedef cudaError_t (*cudaGetDeviceCount_t)(int* count);
 typedef const char* (*cudaGetErrorString_t)(cudaError_t error);
 
+static const char* dl_error_buffer = NULL;
+static size_t dl_error_len = 0;
 
 static void* cuda_runtime_dl = NULL;
 static cudaGetDeviceCount_t device_count_fn = NULL;
@@ -266,21 +268,26 @@ static cudaGetErrorString_t error_str_fn = NULL;
 static int try_load_cudaruntime() {
     if (!cuda_runtime_dl) {
         cuda_runtime_dl = dlopen("libcudart.so", RTLD_NOW|RTLD_LOCAL);
-        if (!cuda_runtime_dl)
+        if (!cuda_runtime_dl) {
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             cuda_runtime_dl = dlopen("libcudart.so.12", RTLD_NOW|RTLD_LOCAL);
+        }
 
         if (!cuda_runtime_dl) {
+            record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
             for (int i=0; i<_num_hints; ++i) {
                 strcpy(_hints[i] + _hints_len[i], "libcudart.so");
                 cuda_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
                 _hints[i][_hints_len[i]] = 0;
                 if (cuda_runtime_dl)
                     break;
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
                 strcpy(_hints[i] + _hints_len[i], "libcudart.so.12");
                 cuda_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
                 _hints[i][_hints_len[i]] = 0;
                 if (cuda_runtime_dl)
                     break;
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
             }
         }
 
@@ -290,31 +297,48 @@ static int try_load_cudaruntime() {
 
     if (!device_count_fn) {
         device_count_fn = (cudaGetDeviceCount_t)dlsym(cuda_runtime_dl, "cudaGetDeviceCount");
-        if (!device_count_fn)
+        if (!device_count_fn) {
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -2;
+        }
     }
 
     if (!device_props_fn) {
         device_props_fn = (cudaGetDeviceProperties_t)dlsym(cuda_runtime_dl, "cudaGetDeviceProperties_v2");
         if (!device_props_fn) {
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             device_props_fn = (cudaGetDeviceProperties_t)dlsym(cuda_runtime_dl, "cudaGetDeviceProperties");
-            if (!device_props_fn)
+            if (!device_props_fn) {
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
                 return -3;
+            }
         }
     }
 
     if (!error_str_fn) {
         error_str_fn = (cudaGetErrorString_t)dlsym(cuda_runtime_dl, "cudaGetErrorString");
-        if (!error_str_fn)
+        if (!error_str_fn) {
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -4;
+        }
     }
 
+    if (dl_error_buffer) {
+        free((void*)dl_error_buffer);
+        dl_error_buffer = NULL;
+        dl_error_len = 0;
+    }
     return 0;
 }
 
 
 int checkCuda() {
     return try_load_cudaruntime();
+}
+
+
+const char* cudaGetDlError() {
+    return dl_error_buffer;
 }
 
 
