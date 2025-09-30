@@ -33,15 +33,15 @@ void record_dl_error(const char** dl_error_buffer, size_t* dl_error_len, int app
 
     char* new_buffer = (char*)malloc(new_len + 1); // +1 for the null-terminator
     if (*dl_error_buffer) {
-        strncpy(new_buffer, *dl_error_buffer, *dl_error_len);
+        memcpy(new_buffer, *dl_error_buffer, *dl_error_len);
         new_buffer[*dl_error_len] = '\n';
         (*dl_error_buffer) = new_buffer;
         new_buffer += (*dl_error_len) + 1;
     } else {
         (*dl_error_buffer) = new_buffer;
     }
-    strncpy(new_buffer, " * ", 3);
-    strncpy(new_buffer + 3, err, err_len);
+    memcpy(new_buffer, " * ", 3);
+    memcpy(new_buffer + 3, err, err_len);
     new_buffer[err_len + 3] = '\0';
     (*dl_error_len) = new_len;
 }
