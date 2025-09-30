@@ -269,25 +269,25 @@ static int try_load_cudaruntime() {
     if (!cuda_runtime_dl) {
         cuda_runtime_dl = dlopen("libcudart.so", RTLD_NOW|RTLD_LOCAL);
         if (!cuda_runtime_dl) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             cuda_runtime_dl = dlopen("libcudart.so.12", RTLD_NOW|RTLD_LOCAL);
         }
 
         if (!cuda_runtime_dl) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, true);
+            record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
             for (int i=0; i<_num_hints; ++i) {
                 strcpy(_hints[i] + _hints_len[i], "libcudart.so");
                 cuda_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
                 _hints[i][_hints_len[i]] = 0;
                 if (cuda_runtime_dl)
                     break;
-                record_dl_error(&dl_error_buffer, &dl_error_len, true);
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
                 strcpy(_hints[i] + _hints_len[i], "libcudart.so.12");
                 cuda_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
                 _hints[i][_hints_len[i]] = 0;
                 if (cuda_runtime_dl)
                     break;
-                record_dl_error(&dl_error_buffer, &dl_error_len, true);
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
             }
         }
 
@@ -298,7 +298,7 @@ static int try_load_cudaruntime() {
     if (!device_count_fn) {
         device_count_fn = (cudaGetDeviceCount_t)dlsym(cuda_runtime_dl, "cudaGetDeviceCount");
         if (!device_count_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -2;
         }
     }
@@ -306,10 +306,10 @@ static int try_load_cudaruntime() {
     if (!device_props_fn) {
         device_props_fn = (cudaGetDeviceProperties_t)dlsym(cuda_runtime_dl, "cudaGetDeviceProperties_v2");
         if (!device_props_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             device_props_fn = (cudaGetDeviceProperties_t)dlsym(cuda_runtime_dl, "cudaGetDeviceProperties");
             if (!device_props_fn) {
-                record_dl_error(&dl_error_buffer, &dl_error_len, true);
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
                 return -3;
             }
         }
@@ -318,13 +318,13 @@ static int try_load_cudaruntime() {
     if (!error_str_fn) {
         error_str_fn = (cudaGetErrorString_t)dlsym(cuda_runtime_dl, "cudaGetErrorString");
         if (!error_str_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -4;
         }
     }
 
     if (dl_error_buffer) {
-        free(dl_error_buffer);
+        free((void*)dl_error_buffer);
         dl_error_buffer = NULL;
         dl_error_len = 0;
     }

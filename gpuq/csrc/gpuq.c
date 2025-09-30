@@ -102,7 +102,7 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
         Py_RETURN_NONE;
     case -1:
         error_str = cudaGetDlError();
-        return PyUnicode_FromFormat("%s: %s", "Could not load libcudart.so", (error_str ? error_str : "(unknown)"));
+        return PyUnicode_FromFormat("%s:\n%s", "Could not load libcudart.so", (error_str ? error_str : "(unknown)"));
     case -2:
         return PyUnicode_InternFromString("Could not resolve cudaGetDeviceCount");
     case -3:
@@ -133,7 +133,7 @@ gpuq_checkamd(PyObject* self, PyObject* args) {
         Py_RETURN_NONE;
     case -1:
         error_str = amdGetDlError();
-        return PyUnicode_FromFormat("%s: %s", "Could not load libamdhip64.so", (error_str ? error_str : "(unknown)"));
+        return PyUnicode_FromFormat("%s:\n%s", "Could not load libamdhip64.so", (error_str ? error_str : "(unknown)"));
     case -2:
         return PyUnicode_InternFromString("Could not resolve hipGetDeviceCount");
     case -3:

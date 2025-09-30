@@ -90,6 +90,6 @@ setup(name=package_name,
         'build_py': custom_wheel
     },
     ext_modules=[
-        Extension("gpuq.C", ["gpuq/csrc/gpuq.c", "gpuq/csrc/amd.c", "gpuq/csrc/cuda.c", "gpuq/csrc/utils.c"], extra_compile_args=['-O3'])
+        Extension("gpuq.C", ["gpuq/csrc/gpuq.c", "gpuq/csrc/amd.c", "gpuq/csrc/cuda.c", "gpuq/csrc/utils.c"], extra_compile_args=['-O3', '-Werror'])
     ],
 )

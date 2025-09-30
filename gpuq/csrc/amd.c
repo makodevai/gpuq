@@ -305,7 +305,7 @@ static int try_load_hipruntime() {
     if (!hip_runtime_dl) {
         hip_runtime_dl = dlopen("libamdhip64.so", RTLD_NOW|RTLD_LOCAL);
         if (!hip_runtime_dl) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             for (int i=0; i<_num_hints; ++i) {
                 strcpy(_hints[i] + _hints_len[i], "libamdhip64.so");
                 hip_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
@@ -313,7 +313,7 @@ static int try_load_hipruntime() {
                 if (hip_runtime_dl)
                     break;
 
-                record_dl_error(&dl_error_buffer, &dl_error_len, true);
+                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
             }
         }
 
@@ -324,7 +324,7 @@ static int try_load_hipruntime() {
     if (!device_count_fn) {
         device_count_fn = (hipGetDeviceCount_t)dlsym(hip_runtime_dl, "hipGetDeviceCount");
         if (!device_count_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -2;
         }
     }
@@ -332,7 +332,7 @@ static int try_load_hipruntime() {
     if (!device_props_fn) {
         device_props_fn = (hipGetDeviceProperties_t)dlsym(hip_runtime_dl, "hipGetDevicePropertiesR0600");
         if (!device_props_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -3;
         }
     }
@@ -340,13 +340,13 @@ static int try_load_hipruntime() {
     if (!error_str_fn) {
         error_str_fn = (hipGetErrorString_t)dlsym(hip_runtime_dl, "hipGetErrorString");
         if (!error_str_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, false);
+            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
             return -4;
         }
     }
 
     if (dl_error_buffer) {
-        free(dl_error_buffer);
+        free((void*)dl_error_buffer);
         dl_error_buffer = NULL;
         dl_error_len = 0;
     }
