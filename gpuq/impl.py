@@ -226,7 +226,7 @@ class MockImplementation(Implementation):
         hip_count: int | None = None,
         cuda_visible: list[str | int] | None = None,
         hip_visible: list[str | int] | None = None,
-        name: str = "{} Mock Device",
+        name: str | list[str] = "{} Mock Device",
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
@@ -264,8 +264,16 @@ class MockImplementation(Implementation):
         self.cuda_visible: list[int] | None
         self.hip_visible: list[int] | None
 
+        if isinstance(name, str):
+            self.names = [name] * self.overall_count
+        else:
+            if len(name) < self.overall_count:
+                raise ValueError(
+                    f"Insufficient names: {len(name)}, needs at least: {self.overall_count}"
+                )
+            self.names = name
+
         self.cobj_args = {
-            "name": name,
             "major": major,
             "minor": minor,
             "total_memory": total_memory,
@@ -387,7 +395,7 @@ class MockImplementation(Implementation):
             index = ord - (self.cuda_count or 0)
             provider = "HIP"
 
-        return MockCObj(ord=ord, provider=provider, index=index, **self.cobj_args)  # type: ignore[arg-type]
+        return MockCObj(ord=ord, name=self.names[ord], provider=provider, index=index, **self.cobj_args)  # type: ignore[arg-type]
 
     def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
         if self.cuda_count is None or gpu_index < 0 or gpu_index >= self.cuda_count:

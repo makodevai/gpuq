@@ -284,7 +284,9 @@ def mock(
     hip_visible: list[int] | None | default = default(
         None, "HIP_VISIBLE_DEVICES", int_list
     ),
-    name: str | default = default("{} Mock Device", "MAKO_MOCK_GPU_NAME", str),
+    name: str | list[str] | default = default(
+        "{} Mock Device", "MAKO_MOCK_GPU_NAME", str
+    ),
     major: int = 1,
     minor: int = 2,
     total_memory: int = 8 * 1024**3,
