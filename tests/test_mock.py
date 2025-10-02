@@ -215,3 +215,23 @@ def test_mp() -> None:
         assert gpu == gpu2
         assert gpu.ord == gpu2.ord
         assert gpu.uuid == gpu2.uuid
+
+
+def test_different_names() -> None:
+    with G.mock(cuda_count=1, hip_count=2, name=["H100", "MI300X", "L40S"]):
+        assert G.get(0).name == "H100"
+        assert G.get(1).name == "MI300X"
+        assert G.get(2).name == "L40S"
+
+
+def test_insufficient_names() -> None:
+    with pytest.raises(ValueError, match="Insufficient names"):
+        with G.mock(cuda_count=2, hip_count=2, name=["H100", "MI300X", "L40S"]):
+            pass
+
+
+def test_too_many_names() -> None:
+    with G.mock(cuda_count=1, hip_count=2, name=["H100", "MI300X", "L40S", "unused"]):
+        assert G.get(0).name == "H100"
+        assert G.get(1).name == "MI300X"
+        assert G.get(2).name == "L40S"
