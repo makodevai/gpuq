@@ -420,6 +420,32 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     obj->async_engines_count = deviceProp.asyncEngineCount;
     obj->cooperative = (char)deviceProp.cooperativeLaunch;
 
+    if (obj->_name_storage[0] == '\0') {
+        const char prefix[] = "nameless-device";
+        const size_t prefix_len = sizeof(prefix) - 1;
+
+        memcpy(obj->_name_storage, prefix, prefix_len);
+        if (deviceProp.gcnArchName[0] != '\0') {
+            size_t len = 0;
+            for (size_t i=0; i<100; ++i) {
+                if (deviceProp.gcnArchName[i] == '\0')
+                    break;
+                if (deviceProp.gcnArchName[i] == ':') {
+                    len = i;
+                    break;
+                }
+            }
+
+            if (len) {
+                obj->_name_storage[prefix_len] = ':';
+                memcpy(obj->_name_storage + prefix_len, deviceProp.gcnArchName, len);
+                obj->_name_storage[prefix_len + len] = '\0';
+            } else {
+                obj->_name_storage[prefix_len] = '\0';
+            }
+        }
+    }
+
     return 0;
 }
 
