@@ -438,8 +438,8 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
 
             if (len) {
                 obj->_name_storage[prefix_len] = ':';
-                memcpy(obj->_name_storage + prefix_len, deviceProp.gcnArchName, len);
-                obj->_name_storage[prefix_len + len] = '\0';
+                memcpy(obj->_name_storage + prefix_len + 1, deviceProp.gcnArchName, len);
+                obj->_name_storage[prefix_len + len + 1] = '\0';
             } else {
                 obj->_name_storage[prefix_len] = '\0';
             }
