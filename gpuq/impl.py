@@ -1,6 +1,9 @@
 import os
+import sys
+import json
 import site
 import itertools
+import subprocess
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Any, ContextManager, Generator, Literal
@@ -46,6 +49,22 @@ except ValueError as e:
 
 
 Visible = dict[Provider, list[int] | None]
+
+_FETCH_ALL_SCRIPT = (
+    "import json, gpuq.C as _C; n = _C.count(); "
+    "print(json.dumps([{"
+    "'ord':d.ord,'index':d.index,'provider':d.provider,'name':d.name,"
+    "'uuid':d.uuid,'major':d.major,'minor':d.minor,"
+    "'total_memory':d.total_memory,'sms_count':d.sms_count,"
+    "'sm_threads':d.sm_threads,'sm_shared_memory':d.sm_shared_memory,"
+    "'sm_registers':d.sm_registers,'sm_blocks':d.sm_blocks,"
+    "'block_threads':d.block_threads,'block_shared_memory':d.block_shared_memory,"
+    "'block_registers':d.block_registers,'warp_size':d.warp_size,"
+    "'l2_cache_size':d.l2_cache_size,"
+    "'concurrent_kernels':bool(d.concurrent_kernels),"
+    "'async_engines_count':d.async_engines_count,'cooperative':bool(d.cooperative)"
+    "} for d in [_C.get(i) for i in range(n)]]))"
+)
 
 
 def _is_int(value: Any, _prefix: str) -> bool:
@@ -172,6 +191,28 @@ class Implementation(ABC):
 
 
 class GenuineImplementation(Implementation):
+    def __init__(self) -> None:
+        super().__init__()
+        self._all_devices: list[MockCObj] | None = None
+
+    def _fetch_all_devices(self) -> list[MockCObj]:
+        if self._all_devices is not None:
+            return self._all_devices
+        env = {k: v for k, v in os.environ.items()
+               if k not in ('CUDA_VISIBLE_DEVICES', 'HIP_VISIBLE_DEVICES', 'ROCR_VISIBLE_DEVICES')}
+        try:
+            result = subprocess.run(
+                [sys.executable, '-c', _FETCH_ALL_SCRIPT],
+                capture_output=True, text=True, env=env, timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                self._all_devices = [MockCObj(**d) for d in json.loads(result.stdout)]
+            else:
+                self._all_devices = []
+        except Exception:
+            self._all_devices = []
+        return self._all_devices
+
     def provider_check(self, provider: Provider) -> str:
         # Run inside save_visible() so checkcuda()/checkamd() don't initialise
         # the CUDA/HIP runtime with CUDA_VISIBLE_DEVICES still set — that would
@@ -219,10 +260,10 @@ class GenuineImplementation(Implementation):
                     os.environ["HIP_VISIBLE_DEVICES"] = hip
 
     def c_count(self) -> int:
-        return int(C.count())
+        return len(self._fetch_all_devices())
 
     def c_get(self, ord: int) -> Any:
-        return C.get(ord)
+        return self._fetch_all_devices()[ord]
 
     def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
         return get_cuda_info(gpu_index)

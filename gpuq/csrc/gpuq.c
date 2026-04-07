@@ -69,31 +69,16 @@ static PyTypeObject GpuPropType = {
 };
 
 
-static int cudaDevices = 0;         /* count gpuq reports (NVML if available) */
-static int cudaRuntimeDevices = 0;  /* count the CUDA runtime actually sees */
+static int cudaDevices = 0;
 static int amdDevices = 0;
 
 
 static int get_gpu_count() {
-    /* Prefer NVML for the CUDA device count: it ignores CUDA_VISIBLE_DEVICES
-       and therefore returns the true physical GPU count even when another
-       library (e.g. torch) has already initialised the CUDA runtime with a
-       restricted device set. */
-    int nvml_count = 0;
-    if (nvmlGetPhysicalDeviceCount(&nvml_count) == 0 && nvml_count >= 0) {
-        cudaDevices = nvml_count;
-        /* Also ask the CUDA runtime so we know whether it was pre-initialised
-           with a restriction (cudaRuntimeDevices < cudaDevices). */
-        int status = cudaGetDeviceCount(&cudaRuntimeDevices);
-        if (status != 0) cudaRuntimeDevices = 0;
-    } else {
-        /* NVML unavailable — fall back to the CUDA runtime (original behaviour). */
-        int status = cudaGetDeviceCount(&cudaDevices);
-        if (status != 0) cudaDevices = 0;
-        cudaRuntimeDevices = cudaDevices;
-    }
+    int status = cudaGetDeviceCount(&cudaDevices);
+    if (status != 0)
+        cudaDevices = 0;
 
-    int status = amdGetDeviceCount(&amdDevices);
+    status = amdGetDeviceCount(&amdDevices);
     if (status != 0)
         amdDevices = 0;
 
@@ -103,12 +88,12 @@ static int get_gpu_count() {
 
 static PyObject*
 gpuq_checkcuda(PyObject* self, PyObject* args) {
-    /* Only verify that the CUDA library loads and symbols resolve.
-       Calling cudaGetDeviceCount() here would initialise the CUDA runtime
-       with whatever CUDA_VISIBLE_DEVICES is currently set, permanently
-       limiting what the runtime sees for the rest of the process.
-       The actual device count is obtained via NVML in get_gpu_count(). */
     int status = checkCuda();
+    if (!status) {
+        status = cudaGetDeviceCount(&cudaDevices);
+        if (status)
+             cudaDevices = 0;
+    }
 
     const char* error_str = NULL;
 
@@ -134,11 +119,12 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
 
 static PyObject*
 gpuq_checkamd(PyObject* self, PyObject* args) {
-    /* Same reasoning as gpuq_checkcuda: only verify library load + symbol
-       resolution. Calling amdGetDeviceCount() here would initialise the HIP
-       runtime with HIP_VISIBLE_DEVICES still set, permanently restricting the
-       device count for the rest of the process. */
     int status = checkAmd();
+    if (!status) {
+        status = amdGetDeviceCount(&amdDevices);
+        if (status)
+             amdDevices = 0;
+    }
 
     const char* error_str = NULL;
 
@@ -205,16 +191,8 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 
     int status = 0;
     if (gpu_id < cudaDevices) {
-        /* Use NVML when the CUDA runtime was pre-initialised by another library
-           (e.g. torch) with CUDA_VISIBLE_DEVICES set: cudaRuntimeDevices will
-           then be smaller than cudaDevices (from NVML), so CUDA can't supply
-           properties for all physical GPUs. */
-        if (cudaRuntimeDevices < cudaDevices) {
-            status = nvmlGetDeviceProps(gpu_id, obj);
-        } else {
-            status = cudaGetDeviceProps(gpu_id, obj);
-        }
-    } else { // gpu_id >= cudaDevices && gpu_id < cudaDevices+amdDevices
+        status = cudaGetDeviceProps(gpu_id, obj);
+    } else { // gpu_id >= cudaDevice && gpu_id < cudaDevice+amdDevices
         status = amdGetDeviceProps(gpu_id-cudaDevices, obj);
     }
 

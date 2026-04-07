@@ -69,10 +69,6 @@ int amdGetDeviceProps(int index, GpuProp* obj);
 void amdClean();
 
 
-int nvmlGetPhysicalDeviceCount(int* count);
-int nvmlGetDeviceProps(int index, GpuProp* obj);
-
-
 // utils
 void record_dl_error(const char** dl_error_buffer, size_t* dl_error_len, int append);
 
