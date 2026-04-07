@@ -177,11 +177,18 @@ def count(
         impl = _get_impl()
 
     if provider == Provider.all():
-        if visible_only:
-            return impl.c_count()
-        else:
-            with impl.save_visible():
-                return impl.c_count()
+        with impl.save_visible() as visible:
+            total = impl.c_count()
+            if not visible_only:
+                return total
+            visible_count = 0
+            for idx in range(total):
+                dev = impl.c_get(idx)
+                prov = Provider[dev.provider]
+                visible_set = visible.get(prov)
+                if _global_to_visible(dev.index, visible_set) is not None:
+                    visible_count += 1
+            return visible_count
     else:
         return len(
             query(

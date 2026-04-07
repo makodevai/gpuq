@@ -173,10 +173,14 @@ class Implementation(ABC):
 
 class GenuineImplementation(Implementation):
     def provider_check(self, provider: Provider) -> str:
-        if provider == Provider.CUDA:
-            return C.checkcuda()
-        if provider == Provider.HIP:
-            return C.checkamd()
+        # Run inside save_visible() so checkcuda()/checkamd() don't initialise
+        # the CUDA/HIP runtime with CUDA_VISIBLE_DEVICES still set — that would
+        # permanently limit what the runtime sees for the rest of the process.
+        with self.save_visible():
+            if provider == Provider.CUDA:
+                return C.checkcuda()
+            if provider == Provider.HIP:
+                return C.checkamd()
 
         raise ValueError(f"Invalid provider: {provider}")
 
