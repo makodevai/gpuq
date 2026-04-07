@@ -205,11 +205,12 @@ class GenuineImplementation(Implementation):
                 [sys.executable, '-c', _FETCH_ALL_SCRIPT],
                 capture_output=True, text=True, env=env, timeout=30,
             )
-            if result.returncode == 0 and result.stdout.strip():
-                self._all_devices = [MockCObj(**d) for d in json.loads(result.stdout)]
-            else:
-                self._all_devices = []
-        except Exception:
+        except (subprocess.TimeoutExpired, OSError):
+            self._all_devices = []
+            return self._all_devices
+        if result.returncode == 0 and result.stdout.strip():
+            self._all_devices = [MockCObj(**d) for d in json.loads(result.stdout)]
+        else:
             self._all_devices = []
         return self._all_devices
 
