@@ -132,17 +132,17 @@ class Implementation(ABC):
 
         return get(idx=idx, provider=provider, visible_only=visible_only, impl=self)
 
-    def checkprovider(self, p: Provider) -> str:
+    def checkprovider(self, p: Provider) -> str | None:
         from . import checkprovider
 
         return checkprovider(p=p, impl=self)
 
-    def checkcuda(self) -> str:
+    def checkcuda(self) -> str | None:
         from . import checkcuda
 
         return checkcuda(impl=self)
 
-    def checkamd(self) -> str:
+    def checkamd(self) -> str | None:
         from . import checkamd
 
         return checkamd(impl=self)
@@ -336,16 +336,16 @@ class MockImplementation(Implementation):
         else:
             self.hip_visible = None
 
-    def provider_check(self, provider: Provider) -> str:
+    def provider_check(self, provider: Provider) -> str | None:
         if provider == Provider.CUDA:
             return (
-                ""
+                None
                 if self.cuda_count is not None
                 else "Mock implementation has not been configured to report CUDA runtime"
             )
         if provider == Provider.HIP:
             return (
-                ""
+                None
                 if self.hip_count is not None
                 else "Mock implementation has not been configured to report HIP runtime"
             )

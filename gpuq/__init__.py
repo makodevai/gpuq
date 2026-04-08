@@ -237,9 +237,9 @@ def get(
         return ret[idx]
 
 
-def checkprovider(p: Provider, impl: Implementation | None = None) -> str:
+def checkprovider(p: Provider, impl: Implementation | None = None) -> str | None:
     """Return error string if a runtime error occurred while checking for
-    the presence of a given provider. Otherwise returns an empty string.
+    the presence of a given provider. Otherwise returns None.
 
     Runtime errors include any dynamic linker errors or errors
     originating from a relevant downstream runtime, which occurred
@@ -250,14 +250,14 @@ def checkprovider(p: Provider, impl: Implementation | None = None) -> str:
     return impl.provider_check(p)
 
 
-def checkcuda(impl: Implementation | None = None) -> str:
+def checkcuda(impl: Implementation | None = None) -> str | None:
     """Shorthand for `checkprovider(Provider.CUDA)`"""
     if impl is None:
         impl = _get_impl()
     return impl.provider_check(Provider.CUDA)
 
 
-def checkamd(impl: Implementation | None = None) -> str:
+def checkamd(impl: Implementation | None = None) -> str | None:
     """Shorthand for `checkprovider(Provider.HIP)`"""
     if impl is None:
         impl = _get_impl()
