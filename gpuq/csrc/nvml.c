@@ -4,12 +4,6 @@
 
 #include "types.h"
 
-
-/* Minimal NVML type definitions — enough to query physical device count and
-   basic properties. NVML is unaffected by CUDA_VISIBLE_DEVICES, which makes it
-   the right backend when the CUDA runtime has already been initialised (e.g. by
-   torch) with a restricted device set. */
-
 typedef void*        nvmlDevice_t;
 typedef unsigned int nvmlReturn_t;
 
@@ -79,7 +73,7 @@ static int try_load_nvml() {
    is written (matches the existing CUDA convention in _uuid_storage[32]). */
 static void nvml_uuid_to_hex(const char* src, char* out) {
     /* skip "GPU-" prefix if present */
-    if (src[0]=='G' && src[1]=='P' && src[2]=='U' && src[3]=='-')
+    if (strncmp(src, "GPU-", 4) == 0)
         src += 4;
 
     int out_idx = 0;
@@ -105,32 +99,25 @@ int nvmlGetDeviceProps(int index, GpuProp* obj) {
     nvmlDevice_t handle = NULL;
     if (nvml_handle_fn((unsigned int)index, &handle) != NVML_SUCCESS) return -1;
 
-    /* name */
     char name[NVML_DEVICE_NAME_BUFFER_SIZE] = {0};
     nvml_name_fn(handle, name, sizeof(name));
     memcpy(obj->_name_storage, name, 256);
 
-    /* uuid — convert to the same 32-char hex format as the CUDA path */
     char uuid_str[NVML_DEVICE_UUID_BUFFER_SIZE] = {0};
     nvml_uuid_fn(handle, uuid_str, sizeof(uuid_str));
     nvml_uuid_to_hex(uuid_str, obj->_uuid_storage);
 
-    /* memory */
     nvmlMemory_t mem = {0, 0, 0};
     nvml_mem_fn(handle, &mem);
     obj->total_memory = mem.total;
 
-    /* compute capability */
     int major = 0, minor = 0;
     nvml_cc_fn(handle, &major, &minor);
     obj->major = major;
     obj->minor = minor;
 
     strcpy(obj->_provider_storage, "CUDA");
-    obj->index = index;   /* physical / NVML index */
-
-    /* Fields not exposed by basic NVML — set to 0 except warp_size which is
-       always 32 for all NVIDIA architectures. */
+    obj->index = index;
     obj->sms_count          = 0;
     obj->sm_threads         = 0;
     obj->sm_shared_memory   = 0;

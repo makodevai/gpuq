@@ -69,25 +69,19 @@ static PyTypeObject GpuPropType = {
 };
 
 
-static int cudaDevices = 0;         /* count gpuq reports (NVML if available) */
-static int cudaRuntimeDevices = 0;  /* count the CUDA runtime actually sees */
+static int cudaDevices = 0;
+static int cudaRuntimeDevices = 0;
+
 static int amdDevices = 0;
 
 
 static int get_gpu_count() {
-    /* Prefer NVML for the CUDA device count: it ignores CUDA_VISIBLE_DEVICES
-       and therefore returns the true physical GPU count even when another
-       library (e.g. torch) has already initialised the CUDA runtime with a
-       restricted device set. */
     int nvml_count = 0;
     if (nvmlGetPhysicalDeviceCount(&nvml_count) == 0 && nvml_count >= 0) {
         cudaDevices = nvml_count;
-        /* Also ask the CUDA runtime so we know whether it was pre-initialised
-           with a restriction (cudaRuntimeDevices < cudaDevices). */
         int status = cudaGetDeviceCount(&cudaRuntimeDevices);
         if (status != 0) cudaRuntimeDevices = 0;
     } else {
-        /* NVML unavailable — fall back to the CUDA runtime (original behaviour). */
         int status = cudaGetDeviceCount(&cudaDevices);
         if (status != 0) cudaDevices = 0;
         cudaRuntimeDevices = cudaDevices;
@@ -114,7 +108,7 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
 
     switch (status) {
     case 0:
-        Py_RETURN_NONE;
+        break;
     case -1:
         error_str = cudaGetDlError();
         return PyUnicode_FromFormat("%s:\n%s", "Could not load libcudart.so", (error_str ? error_str : "(unknown)"));
@@ -128,6 +122,18 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
         return PyUnicode_InternFromString(cudaGetErrStr(status));
     }
 
+    /* Library loaded OK — verify that usable GPUs actually exist via NVML.
+       We avoid cudaGetDeviceCount() here because it would initialise the
+       CUDA runtime and permanently lock in CUDA_VISIBLE_DEVICES. */
+    int nvml_count = 0;
+    if (nvmlGetPhysicalDeviceCount(&nvml_count) == 0) {
+        if (nvml_count <= 0)
+            return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
+        Py_RETURN_NONE;
+    }
+
+    /* NVML unavailable — can't verify without initialising the runtime,
+       so assume OK if the library loaded. */
     Py_RETURN_NONE;
 }
 
@@ -214,7 +220,7 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
         } else {
             status = cudaGetDeviceProps(gpu_id, obj);
         }
-    } else { // gpu_id >= cudaDevices && gpu_id < cudaDevices+amdDevices
+    } else { // gpu_id >= cudaDevice && gpu_id < cudaDevice+amdDevices
         status = amdGetDeviceProps(gpu_id-cudaDevices, obj);
     }
 
