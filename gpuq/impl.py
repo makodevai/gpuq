@@ -67,7 +67,7 @@ class Implementation(ABC):
         self._ctx: ContextManager["Implementation"] | None = None
 
     @abstractmethod
-    def provider_check(self, provider: Provider) -> str: ...
+    def provider_check(self, provider: Provider) -> str | None: ...
 
     @abstractmethod
     def save_visible(self, clear: bool = True) -> ContextManager[Visible]: ...
@@ -172,10 +172,7 @@ class Implementation(ABC):
 
 
 class GenuineImplementation(Implementation):
-    def provider_check(self, provider: Provider) -> str:
-        # Run inside save_visible() so checkcuda()/checkamd() don't initialise
-        # the CUDA/HIP runtime with CUDA_VISIBLE_DEVICES still set — that would
-        # permanently limit what the runtime sees for the rest of the process.
+    def provider_check(self, provider: Provider) -> str | None:
         with self.save_visible():
             if provider == Provider.CUDA:
                 return C.checkcuda()

@@ -97,11 +97,6 @@ static int get_gpu_count() {
 
 static PyObject*
 gpuq_checkcuda(PyObject* self, PyObject* args) {
-    /* Only verify that the CUDA library loads and symbols resolve.
-       Calling cudaGetDeviceCount() here would initialise the CUDA runtime
-       with whatever CUDA_VISIBLE_DEVICES is currently set, permanently
-       limiting what the runtime sees for the rest of the process.
-       The actual device count is obtained via NVML in get_gpu_count(). */
     int status = checkCuda();
 
     const char* error_str = NULL;
@@ -122,28 +117,18 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
         return PyUnicode_InternFromString(cudaGetErrStr(status));
     }
 
-    /* Library loaded OK — verify that usable GPUs actually exist via NVML.
-       We avoid cudaGetDeviceCount() here because it would initialise the
-       CUDA runtime and permanently lock in CUDA_VISIBLE_DEVICES. */
     int nvml_count = 0;
     if (nvmlGetPhysicalDeviceCount(&nvml_count) == 0) {
         if (nvml_count <= 0)
             return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
         Py_RETURN_NONE;
     }
-
-    /* NVML unavailable — can't verify without initialising the runtime,
-       so assume OK if the library loaded. */
     Py_RETURN_NONE;
 }
 
 
 static PyObject*
 gpuq_checkamd(PyObject* self, PyObject* args) {
-    /* Same reasoning as gpuq_checkcuda: only verify library load + symbol
-       resolution. Calling amdGetDeviceCount() here would initialise the HIP
-       runtime with HIP_VISIBLE_DEVICES still set, permanently restricting the
-       device count for the rest of the process. */
     int status = checkAmd();
 
     const char* error_str = NULL;
@@ -211,10 +196,6 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 
     int status = 0;
     if (gpu_id < cudaDevices) {
-        /* Use NVML when the CUDA runtime was pre-initialised by another library
-           (e.g. torch) with CUDA_VISIBLE_DEVICES set: cudaRuntimeDevices will
-           then be smaller than cudaDevices (from NVML), so CUDA can't supply
-           properties for all physical GPUs. */
         if (cudaRuntimeDevices < cudaDevices) {
             status = nvmlGetDeviceProps(gpu_id, obj);
         } else {
