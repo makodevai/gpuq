@@ -180,7 +180,13 @@ class GenuineImplementation(Implementation):
             if provider == Provider.CUDA:
                 return C.checkcuda()
             if provider == Provider.HIP:
-                return C.checkamd()
+                err = C.checkamd()
+                if err:
+                    return err
+                from .hip import _get_hip_nodes_info
+                if not _get_hip_nodes_info():
+                    return "No AMD GPU devices detected (via KFD sysfs)"
+                return None
 
         raise ValueError(f"Invalid provider: {provider}")
 
