@@ -341,12 +341,7 @@ int amdsmiGetGfxVersion(int index, char* gfx, int max_len) {
 
     if (asic.target_graphics_version == 0xFFFFFFFFFFFFFFFFULL) return -1;
 
-    /* encode as "major.minor.stepping" decimal string */
-    uint64_t v = asic.target_graphics_version;
-    snprintf(gfx, max_len, "%u.%u.%u",
-             (unsigned)((v >> 24) & 0xFF),
-             (unsigned)((v >> 16) & 0xFF),
-             (unsigned)(v & 0xFFFF));
+    snprintf(gfx, max_len, "%x", (unsigned)asic.target_graphics_version);
     return 0;
 }
 
