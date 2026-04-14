@@ -8,18 +8,18 @@ class CudaRuntimeInfo:
     @property
     def utilisation(self) -> int:
         from . import C
-        return int(C.nvml_utilisation(self.index))  # type: ignore[no-any-return]
+        return int(C._nvml_utilisation(self.index))  # type: ignore[no-any-return]
 
     @property
     def used_memory(self) -> int:
         """Used memory in MiB."""
         from . import C
-        return int(C.nvml_used_memory(self.index))  # type: ignore[no-any-return]
+        return int(C._nvml_used_memory(self.index))  # type: ignore[no-any-return]
 
     @property
     def pids(self) -> list[int]:
         from . import C
-        return C.nvml_pids(self.index)  # type: ignore[no-any-return]
+        return C._nvml_pids(self.index)  # type: ignore[no-any-return]
 
 
 @dataclass

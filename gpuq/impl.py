@@ -1,6 +1,4 @@
 import os
-import site
-import itertools
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Any, ContextManager, Generator, Literal
@@ -10,35 +8,6 @@ from . import C
 from .datatypes import Provider, MockCObj, Properties
 from .cuda import CudaRuntimeInfo, get_cuda_info, CudaRuntimeInfoMock
 from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
-
-
-def _restore_default_hints() -> None:
-    sites = site.getsitepackages().copy()
-    if site.ENABLE_USER_SITE:
-        sites.append(site.getusersitepackages())
-
-    loc_hints = [
-        "/opt/rocm/lib/",
-    ] + list(
-        itertools.chain.from_iterable(
-            [
-                os.path.join(loc, "torch/lib/"),
-            ]
-            for loc in sites
-        )
-    )
-
-    loc_hints_ascii = [loc.encode("ascii") for loc in loc_hints]
-
-    C._set_location_hints(loc_hints_ascii)
-
-
-try:
-    _restore_default_hints()
-except ValueError as e:
-    raise ValueError(
-        f"Failed to configure loading hints for the library! Site locations: {site.getsitepackages()} and {site.getusersitepackages()}"
-    ) from e
 
 
 Visible = dict[Provider, list[int] | None]
@@ -173,13 +142,7 @@ class GenuineImplementation(Implementation):
             if provider == Provider.CUDA:
                 return C.checkcuda()
             if provider == Provider.HIP:
-                err = C.checkamd()
-                if err:
-                    return err
-                from .hip import _get_hip_nodes_info
-                if not _get_hip_nodes_info():
-                    return "No AMD GPU devices detected (via KFD sysfs)"
-                return None
+                return C.checkamd()
 
         raise ValueError(f"Invalid provider: {provider}")
 
@@ -248,6 +211,8 @@ class MockImplementation(Implementation):
         hip_drm: int = 128,
         hip_node_idx: int = 2,
         hip_pids: list[int] = [],
+        hip_utilisation: int = 0,
+        hip_memory: int = 0,
         _hip_drm_stride: int = 8,
     ) -> None:
         if (cuda_count is not None and cuda_count < 0) or (
@@ -288,6 +253,8 @@ class MockImplementation(Implementation):
             "drm": hip_drm,
             "node_idx": hip_node_idx,
             "pids": hip_pids,
+            "utilisation": hip_utilisation,
+            "used_memory": hip_memory,
         }
 
         self._hip_drm_stride = _hip_drm_stride

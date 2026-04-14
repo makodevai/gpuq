@@ -165,6 +165,8 @@ int cudaGetDeviceProps(int index, GpuProp* obj) {
 
     strcpy(obj->_provider_storage, "CUDA");
     obj->index = index;
+    obj->sms_count = 0;
+    obj->l2_cache_size = 0;
 
     return 0;
 }

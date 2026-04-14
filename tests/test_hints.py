@@ -14,7 +14,7 @@ def restore_hints() -> Generator[None, None, None]:
     try:
         yield
     finally:
-        gpuq.impl._restore_default_hints()
+        gpuq.C._set_location_hints([])
 
 
 def test_just_right_hint() -> None:

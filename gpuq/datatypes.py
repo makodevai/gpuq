@@ -114,6 +114,14 @@ class Properties:
         return self.cobj.total_memory  # type: ignore[no-any-return]
 
     @property
+    def sms_count(self) -> int:
+        return self.cobj.sms_count  # type: ignore[no-any-return]
+
+    @property
+    def l2_cache_size(self) -> int:
+        return self.cobj.l2_cache_size  # type: ignore[no-any-return]
+
+    @property
     def cuda_info(self) -> CudaRuntimeInfo | None:
         if self._cuda_info is not None:
             return self._cuda_info
@@ -146,6 +154,8 @@ class Properties:
             "major": self.major,
             "minor": self.minor,
             "total_memory": self.total_memory,
+            "sms_count": self.sms_count,
+            "l2_cache_size": self.l2_cache_size,
         }
 
         if strip_index:
@@ -212,6 +222,8 @@ class MockCObj:
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
+        sms_count: int = 0,
+        l2_cache_size: int = 0,
     ) -> None:
         name = name.format(provider)
 
@@ -231,3 +243,5 @@ class MockCObj:
         self.major = major
         self.minor = minor
         self.total_memory = total_memory
+        self.sms_count = sms_count
+        self.l2_cache_size = l2_cache_size

@@ -305,6 +305,8 @@ def mock(
     hip_drm: int = 128,
     hip_node_idx: int = 2,
     hip_pids: list[int] = [],
+    hip_utilisation: int = 0,
+    hip_memory: int = 0,
     _hip_drm_stride: int = 8,
 ) -> Implementation:
     args = {

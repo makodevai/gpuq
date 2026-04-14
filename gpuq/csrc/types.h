@@ -33,10 +33,12 @@ typedef struct {
     int major;
     int minor;
     size_t total_memory;
+    int sms_count;
+    int l2_cache_size;
 
     char _provider_storage[8];
     char _name_storage[256];
-    char _uuid_storage[32];
+    char _uuid_storage[33];
 } GpuProp;
 
 
@@ -53,9 +55,16 @@ int nvmlGetRuntimePids(int index, int* pids, int* count, int max_count);
 
 int checkAmd();
 const char* amdGetDlError();
-const char* amdGetErrStr(int status);
 int amdGetDeviceCount(int* count);
 int amdGetDeviceProps(int index, GpuProp* obj);
+
+/* AMD SMI runtime info (utilisation, memory, PIDs, gfx, drm, node) */
+int amdsmiGetRuntimeUtilisation(int index, int* gpu_util);
+int amdsmiGetRuntimeMemory(int index, unsigned long long* used_bytes);
+int amdsmiGetRuntimePids(int index, int* pids, int* count, int max_count);
+int amdsmiGetGfxVersion(int index, char* gfx, int max_len);
+int amdsmiGetDrmRender(int index, int* drm_render);
+int amdsmiGetNodeId(int index, int* node_id);
 
 
 // utils
