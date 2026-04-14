@@ -76,15 +76,13 @@ static int get_gpu_count() {
 static PyObject*
 gpuq_checkcuda(PyObject* self, PyObject* args) {
     int status = checkCuda();
-    if (status != 0) {
+    if (status) {
         const char* error_str = cudaGetDlError();
         return PyUnicode_FromFormat("%s:\n%s", "Could not load libnvidia-ml.so", (error_str ? error_str : "(unknown)"));
     }
-
     int count = 0;
-    if (cudaGetDeviceCount(&count) != 0 || count <= 0)
+    if (cudaGetDeviceCount(&count) || count <= 0)
         return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
-
     Py_RETURN_NONE;
 }
 
