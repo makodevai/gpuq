@@ -40,19 +40,6 @@ static PyMemberDef GpuPropMembers[] = {
     {"major", Py_T_INT, offsetof(GpuProp, major), 0, "Model major number"},
     {"minor", Py_T_INT, offsetof(GpuProp, minor), 0, "Model minor number"},
     {"total_memory", Py_T_SIZET, offsetof(GpuProp, total_memory), 0, "Total global memory (in bytes)"},
-    {"sms_count", Py_T_INT, offsetof(GpuProp, sms_count), 0, "Number of multiprocessors"},
-    {"sm_threads", Py_T_INT, offsetof(GpuProp, sm_threads), 0, "Number of threads per multiprocessor"},
-    {"sm_shared_memory", Py_T_SIZET, offsetof(GpuProp, sm_shared_memory), 0, "Shared memory per multiprocessor (in bytes)"},
-    {"sm_registers", Py_T_INT, offsetof(GpuProp, sm_registers), 0, "Number of registers per multiprocessor"},
-    {"sm_blocks", Py_T_INT, offsetof(GpuProp, sm_blocks), 0, "Maximum number of blocks per multiprocessor"},
-    {"block_threads", Py_T_INT, offsetof(GpuProp, block_threads), 0, "Maximum number of threads per block"},
-    {"block_shared_memory", Py_T_SIZET, offsetof(GpuProp, block_shared_memory), 0, "Shared memory per block (in bytes)"},
-    {"block_registers", Py_T_INT, offsetof(GpuProp, block_registers), 0, "Number of registers per block"},
-    {"warp_size", Py_T_INT, offsetof(GpuProp, warp_size), 0, "Warp size"},
-    {"l2_cache_size", Py_T_INT, offsetof(GpuProp, l2_cache_size), 0, "L2 cache size"},
-    {"concurrent_kernels", Py_T_BOOL, offsetof(GpuProp, concurrent_kernels), 0, "Whether the device supports concurrent kernels"},
-    {"async_engines_count", Py_T_INT, offsetof(GpuProp, async_engines_count), 0, "Number of asynchronous engines"},
-    {"cooperative", Py_T_BOOL, offsetof(GpuProp, cooperative), 0, "Whether the device supports cooperative launches"},
     {NULL}
 };
 
@@ -70,24 +57,15 @@ static PyTypeObject GpuPropType = {
 
 
 static int cudaDevices = 0;
-static int cudaRuntimeDevices = 0;
-
 static int amdDevices = 0;
 
 
 static int get_gpu_count() {
-    int nvml_count = 0;
-    if (nvmlGetPhysicalDeviceCount(&nvml_count) == 0 && nvml_count >= 0) {
-        cudaDevices = nvml_count;
-        int status = cudaGetDeviceCount(&cudaRuntimeDevices);
-        if (status != 0) cudaRuntimeDevices = 0;
-    } else {
-        int status = cudaGetDeviceCount(&cudaDevices);
-        if (status != 0) cudaDevices = 0;
-        cudaRuntimeDevices = cudaDevices;
-    }
+    int status = cudaGetDeviceCount(&cudaDevices);
+    if (status != 0)
+        cudaDevices = 0;
 
-    int status = amdGetDeviceCount(&amdDevices);
+    status = amdGetDeviceCount(&amdDevices);
     if (status != 0)
         amdDevices = 0;
 
@@ -98,31 +76,15 @@ static int get_gpu_count() {
 static PyObject*
 gpuq_checkcuda(PyObject* self, PyObject* args) {
     int status = checkCuda();
-
-    const char* error_str = NULL;
-
-    switch (status) {
-    case 0:
-        break;
-    case -1:
-        error_str = cudaGetDlError();
-        return PyUnicode_FromFormat("%s:\n%s", "Could not load libcudart.so", (error_str ? error_str : "(unknown)"));
-    case -2:
-        return PyUnicode_InternFromString("Could not resolve cudaGetDeviceCount");
-    case -3:
-        return PyUnicode_InternFromString("Could not resolve cudaGetDeviceProperties");
-    case -4:
-        return PyUnicode_InternFromString("Could not resolve cudaGetErrorString");
-    default:
-        return PyUnicode_InternFromString(cudaGetErrStr(status));
+    if (status != 0) {
+        const char* error_str = cudaGetDlError();
+        return PyUnicode_FromFormat("%s:\n%s", "Could not load libnvidia-ml.so", (error_str ? error_str : "(unknown)"));
     }
 
-    int nvml_count = 0;
-    if (nvmlGetPhysicalDeviceCount(&nvml_count) == 0) {
-        if (nvml_count <= 0)
-            return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
-        Py_RETURN_NONE;
-    }
+    int count = 0;
+    if (cudaGetDeviceCount(&count) != 0 || count <= 0)
+        return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
+
     Py_RETURN_NONE;
 }
 
@@ -196,13 +158,9 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 
     int status = 0;
     if (gpu_id < cudaDevices) {
-        if (cudaRuntimeDevices < cudaDevices) {
-            status = nvmlGetDeviceProps(gpu_id, obj);
-        } else {
-            status = cudaGetDeviceProps(gpu_id, obj);
-        }
-    } else { // gpu_id >= cudaDevice && gpu_id < cudaDevice+amdDevices
-        status = amdGetDeviceProps(gpu_id-cudaDevices, obj);
+        status = cudaGetDeviceProps(gpu_id, obj);
+    } else {
+        status = amdGetDeviceProps(gpu_id - cudaDevices, obj);
     }
 
     if (status) {
@@ -211,6 +169,61 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     }
 
     return (PyObject*)obj;
+}
+
+
+static PyObject*
+gpuq_nvml_utilisation(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "nvml_utilisation takes exactly 1 argument");
+        return NULL;
+    }
+    int index = -1;
+    if (!PyArg_Parse(args[0], "i", &index)) return NULL;
+
+    int util = 0;
+    if (nvmlGetRuntimeUtilisation(index, &util) != 0)
+        return PyLong_FromLong(-1);
+    return PyLong_FromLong(util);
+}
+
+
+static PyObject*
+gpuq_nvml_used_memory(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "nvml_used_memory takes exactly 1 argument");
+        return NULL;
+    }
+    int index = -1;
+    if (!PyArg_Parse(args[0], "i", &index)) return NULL;
+
+    unsigned long long used = 0;
+    if (nvmlGetRuntimeMemory(index, &used) != 0)
+        return PyLong_FromLong(-1);
+    /* return in MiB to match previous nvidia-smi convention */
+    return PyLong_FromUnsignedLongLong(used / (1024 * 1024));
+}
+
+
+static PyObject*
+gpuq_nvml_pids(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
+    if (nargs != 1) {
+        PyErr_SetString(PyExc_TypeError, "nvml_pids takes exactly 1 argument");
+        return NULL;
+    }
+    int index = -1;
+    if (!PyArg_Parse(args[0], "i", &index)) return NULL;
+
+    int pids[128];
+    int count = 0;
+    nvmlGetRuntimePids(index, pids, &count, 128);
+
+    PyObject* list = PyList_New(count);
+    if (!list) return NULL;
+    for (int i = 0; i < count; i++) {
+        PyList_SET_ITEM(list, i, PyLong_FromLong(pids[i]));
+    }
+    return list;
 }
 
 
@@ -269,10 +282,13 @@ gpuq__get_max_hint_len(PyObject* self, PyObject* args) {
 
 
 static PyMethodDef gpuq_methods[] = {
-    {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for CUDA runtime."},
+    {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for NVML (NVIDIA)."},
     {"checkamd", gpuq_checkamd, METH_NOARGS, "Return status code for HIP runtime."},
     {"count", gpuq_count, METH_NOARGS, "Return the number of GPUs."},
     {"get", (PyCFunction)gpuq_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
+    {"nvml_utilisation", (PyCFunction)gpuq_nvml_utilisation, METH_FASTCALL, "Return GPU utilisation % for NVIDIA device at index."},
+    {"nvml_used_memory", (PyCFunction)gpuq_nvml_used_memory, METH_FASTCALL, "Return used memory in MiB for NVIDIA device at index."},
+    {"nvml_pids", (PyCFunction)gpuq_nvml_pids, METH_FASTCALL, "Return list of PIDs using NVIDIA device at index."},
     {"_set_location_hints", (PyCFunction)gpuq__set_location_hints, METH_FASTCALL, "(internal) set location hints for dlopen."},
     {"_get_max_hints", gpuq__get_max_hints, METH_NOARGS, "(internal) return the maximum number of hints that can be passed."},
     {"_get_max_hint_len", gpuq__get_max_hint_len, METH_NOARGS, "(internal) return the maximum length of a single hint."},

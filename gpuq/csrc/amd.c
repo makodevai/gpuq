@@ -405,20 +405,6 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     obj->major = deviceProp.major;
     obj->minor = deviceProp.minor;
     obj->total_memory = deviceProp.totalGlobalMem;
-    obj->sms_count = deviceProp.multiProcessorCount;
-    obj->sm_threads = deviceProp.maxThreadsPerMultiProcessor;
-    // obj->sm_shared_memory = deviceProp.sharedMemPerMultiprocessor;
-    obj->sm_shared_memory = deviceProp.maxSharedMemoryPerMultiProcessor; // hip specific, seems to make more sense
-    obj->sm_registers = deviceProp.regsPerMultiprocessor;
-    obj->sm_blocks = deviceProp.maxBlocksPerMultiProcessor;
-    obj->block_threads = deviceProp.maxThreadsPerBlock;
-    obj->block_shared_memory = deviceProp.sharedMemPerBlock;
-    obj->block_registers = deviceProp.regsPerBlock;
-    obj->warp_size = deviceProp.warpSize;
-    obj->l2_cache_size = deviceProp.l2CacheSize;
-    obj->concurrent_kernels = (char)deviceProp.concurrentKernels;
-    obj->async_engines_count = deviceProp.asyncEngineCount;
-    obj->cooperative = (char)deviceProp.cooperativeLaunch;
 
     if (obj->_name_storage[0] == '\0') {
         const char prefix[] = "nameless-device";

@@ -114,58 +114,6 @@ class Properties:
         return self.cobj.total_memory  # type: ignore[no-any-return]
 
     @property
-    def sms_count(self) -> int:
-        return self.cobj.sms_count  # type: ignore[no-any-return]
-
-    @property
-    def sm_threads(self) -> int:
-        return self.cobj.sm_threads  # type: ignore[no-any-return]
-
-    @property
-    def sm_shared_memory(self) -> int:
-        return self.cobj.sm_shared_memory  # type: ignore[no-any-return]
-
-    @property
-    def sm_registers(self) -> int:
-        return self.cobj.sm_registers  # type: ignore[no-any-return]
-
-    @property
-    def sm_blocks(self) -> int:
-        return self.cobj.sm_blocks  # type: ignore[no-any-return]
-
-    @property
-    def block_threads(self) -> int:
-        return self.cobj.block_threads  # type: ignore[no-any-return]
-
-    @property
-    def block_shared_memory(self) -> int:
-        return self.cobj.block_shared_memory  # type: ignore[no-any-return]
-
-    @property
-    def block_registers(self) -> int:
-        return self.cobj.block_registers  # type: ignore[no-any-return]
-
-    @property
-    def warp_size(self) -> int:
-        return self.cobj.warp_size  # type: ignore[no-any-return]
-
-    @property
-    def l2_cache_size(self) -> int:
-        return self.cobj.l2_cache_size  # type: ignore[no-any-return]
-
-    @property
-    def concurrent_kernels(self) -> bool:
-        return self.cobj.concurrent_kernels  # type: ignore[no-any-return]
-
-    @property
-    def async_engines_count(self) -> int:
-        return self.cobj.async_engines_count  # type: ignore[no-any-return]
-
-    @property
-    def cooperative(self) -> bool:
-        return self.cobj.cooperative  # type: ignore[no-any-return]
-
-    @property
     def cuda_info(self) -> CudaRuntimeInfo | None:
         if self._cuda_info is not None:
             return self._cuda_info
@@ -198,19 +146,6 @@ class Properties:
             "major": self.major,
             "minor": self.minor,
             "total_memory": self.total_memory,
-            "sms_count": self.sms_count,
-            "sm_threads": self.sm_threads,
-            "sm_shared_memory": self.sm_shared_memory,
-            "sm_registers": self.sm_registers,
-            "sm_blocks": self.sm_blocks,
-            "block_threads": self.block_threads,
-            "block_shared_memory": self.block_shared_memory,
-            "block_registers": self.block_registers,
-            "warp_size": self.warp_size,
-            "l2_cache_size": self.l2_cache_size,
-            "concurrent_kernels": self.concurrent_kernels,
-            "async_engines_count": self.async_engines_count,
-            "cooperative": self.cooperative,
         }
 
         if strip_index:
@@ -277,19 +212,6 @@ class MockCObj:
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
-        sms_count: int = 12,
-        sm_threads: int = 2048,
-        sm_shared_memory: int = 16 * 1024,
-        sm_registers: int = 512,
-        sm_blocks: int = 4,
-        block_threads: int = 1024,
-        block_shared_memory: int = 8 * 1024,
-        block_registers: int = 256,
-        warp_size: int = 32,
-        l2_cache_size: int = 8 * 1024**2,
-        concurrent_kernels: bool = True,
-        async_engines_count: int = 0,
-        cooperative: bool = True,
     ) -> None:
         name = name.format(provider)
 
@@ -309,16 +231,3 @@ class MockCObj:
         self.major = major
         self.minor = minor
         self.total_memory = total_memory
-        self.sms_count = sms_count
-        self.sm_threads = sm_threads
-        self.sm_shared_memory = sm_shared_memory
-        self.sm_registers = sm_registers
-        self.sm_blocks = sm_blocks
-        self.block_threads = block_threads
-        self.block_shared_memory = block_shared_memory
-        self.block_registers = block_registers
-        self.warp_size = warp_size
-        self.l2_cache_size = l2_cache_size
-        self.concurrent_kernels = concurrent_kernels
-        self.async_engines_count = async_engines_count
-        self.cooperative = cooperative

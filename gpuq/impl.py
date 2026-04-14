@@ -18,15 +18,11 @@ def _restore_default_hints() -> None:
         sites.append(site.getusersitepackages())
 
     loc_hints = [
-        "/opt/cuda/targets/x86_64-linux/lib/",
         "/opt/rocm/lib/",
-        "/usr/local/cuda/targets/x86_64-linux/lib/",
     ] + list(
         itertools.chain.from_iterable(
             [
-                os.path.join(loc, "nvidia/cuda_runtime/lib/"),
                 os.path.join(loc, "torch/lib/"),
-                os.path.join(loc, "triton/lib/"),
             ]
             for loc in sites
         )
@@ -245,19 +241,6 @@ class MockImplementation(Implementation):
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
-        sms_count: int = 12,
-        sm_threads: int = 2048,
-        sm_shared_memory: int = 16 * 1024,
-        sm_registers: int = 512,
-        sm_blocks: int = 4,
-        block_threads: int = 1024,
-        block_shared_memory: int = 8 * 1024,
-        block_registers: int = 256,
-        warp_size: int = 32,
-        l2_cache_size: int = 8 * 1024**2,
-        concurrent_kernels: bool = True,
-        async_engines_count: int = 0,
-        cooperative: bool = True,
         cuda_utilisation: int = 0,
         cuda_memory: int = 1,
         cuda_pids: list[int] = [],
@@ -292,19 +275,6 @@ class MockImplementation(Implementation):
             "major": major,
             "minor": minor,
             "total_memory": total_memory,
-            "sms_count": sms_count,
-            "sm_threads": sm_threads,
-            "sm_shared_memory": sm_shared_memory,
-            "sm_registers": sm_registers,
-            "sm_blocks": sm_blocks,
-            "block_threads": block_threads,
-            "block_shared_memory": block_shared_memory,
-            "block_registers": block_registers,
-            "warp_size": warp_size,
-            "l2_cache_size": l2_cache_size,
-            "concurrent_kernels": concurrent_kernels,
-            "async_engines_count": async_engines_count,
-            "cooperative": cooperative,
         }
 
         self.cuda_runtime_args = {
