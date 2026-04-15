@@ -1,48 +1,12 @@
 import os
-import site
-import itertools
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Any, ContextManager, Generator, Literal
-from contextlib import contextmanager
+from typing import Any, ContextManager, Literal
 
 from . import C
 from .datatypes import Provider, MockCObj, Properties
 from .cuda import CudaRuntimeInfo, get_cuda_info, CudaRuntimeInfoMock
 from .hip import HipRuntimeInfo, get_hip_info, HipRuntimeInfoMock
-
-
-def _restore_default_hints() -> None:
-    sites = site.getsitepackages().copy()
-    if site.ENABLE_USER_SITE:
-        sites.append(site.getusersitepackages())
-
-    loc_hints = [
-        "/opt/cuda/targets/x86_64-linux/lib/",
-        "/opt/rocm/lib/",
-        "/usr/local/cuda/targets/x86_64-linux/lib/",
-    ] + list(
-        itertools.chain.from_iterable(
-            [
-                os.path.join(loc, "nvidia/cuda_runtime/lib/"),
-                os.path.join(loc, "torch/lib/"),
-                os.path.join(loc, "triton/lib/"),
-            ]
-            for loc in sites
-        )
-    )
-
-    loc_hints_ascii = [loc.encode("ascii") for loc in loc_hints]
-
-    C._set_location_hints(loc_hints_ascii)
-
-
-try:
-    _restore_default_hints()
-except ValueError as e:
-    raise ValueError(
-        f"Failed to configure loading hints for the library! Site locations: {site.getsitepackages()} and {site.getusersitepackages()}"
-    ) from e
 
 
 Visible = dict[Provider, list[int] | None]
@@ -70,7 +34,7 @@ class Implementation(ABC):
     def provider_check(self, provider: Provider) -> str: ...
 
     @abstractmethod
-    def save_visible(self, clear: bool = True) -> ContextManager[Visible]: ...
+    def parse_visible(self) -> Visible: ...
 
     @abstractmethod
     def c_count(self) -> int: ...
@@ -180,8 +144,7 @@ class GenuineImplementation(Implementation):
 
         raise ValueError(f"Invalid provider: {provider}")
 
-    @contextmanager
-    def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
+    def parse_visible(self) -> Visible:
         cuda = os.environ.get("CUDA_VISIBLE_DEVICES", None)
         hip = os.environ.get("HIP_VISIBLE_DEVICES", None)
 
@@ -198,21 +161,7 @@ class GenuineImplementation(Implementation):
             parsed_hip = sorted(list(parsed_hip))  # type: ignore[arg-type]
         else:
             parsed_hip = parsed_cuda
-
-        if clear:
-            if cuda is not None:
-                del os.environ["CUDA_VISIBLE_DEVICES"]
-            if hip is not None:
-                del os.environ["HIP_VISIBLE_DEVICES"]
-
-        try:
-            yield {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
-        finally:
-            if clear:
-                if cuda is not None:
-                    os.environ["CUDA_VISIBLE_DEVICES"] = cuda
-                if hip is not None:
-                    os.environ["HIP_VISIBLE_DEVICES"] = hip
+        return {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
 
     def c_count(self) -> int:
         return int(C.count())
@@ -253,11 +202,13 @@ class MockImplementation(Implementation):
         cooperative: bool = True,
         cuda_utilisation: int = 0,
         cuda_memory: int = 1,
-        cuda_pids: list[int] = [],
+        cuda_pids: list[int] | None = None,
         hip_gfx: str = "942",
         hip_drm: int = 128,
         hip_node_idx: int = 2,
-        hip_pids: list[int] = [],
+        hip_pids: list[int] | None = None,
+        hip_utilisation: int = 0,
+        hip_memory: int = 0,
         _hip_drm_stride: int = 8,
     ) -> None:
         if (cuda_count is not None and cuda_count < 0) or (
@@ -303,14 +254,16 @@ class MockImplementation(Implementation):
         self.cuda_runtime_args = {
             "utilisation": cuda_utilisation,
             "used_memory": cuda_memory,
-            "pids": cuda_pids,
+            "pids": cuda_pids if cuda_pids is not None else [],
         }
 
         self.hip_runtime_args = {
             "gfx": hip_gfx,
             "drm": hip_drm,
             "node_idx": hip_node_idx,
-            "pids": hip_pids,
+            "pids": hip_pids if hip_pids is not None else [],
+            "utilisation": hip_utilisation,
+            "used_memory": hip_memory,
         }
 
         self._hip_drm_stride = _hip_drm_stride
@@ -345,53 +298,13 @@ class MockImplementation(Implementation):
 
         raise ValueError(f"Invalid provider: {provider}")
 
-    @contextmanager
-    def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
+    def parse_visible(self) -> Visible:
         cuda = self.cuda_visible.copy() if self.cuda_visible is not None else None
         hip = self.hip_visible.copy() if self.hip_visible is not None else None
-
-        if clear:
-            self.cuda_visible = None
-            self.hip_visible = None
-
-        try:
-            yield {Provider.CUDA: cuda, Provider.HIP: hip if hip is not None else cuda}
-        finally:
-            if clear:
-                self.cuda_visible = cuda
-                self.hip_visible = hip
-
-    def _count_hip(self) -> int:
-        if not self.hip_count:
-            return 0
-        if self.hip_visible is not None:
-            count = sum(
-                1 for idx in self.hip_visible if idx >= 0 and idx < self.hip_count
-            )
-        elif self.cuda_visible is not None:
-            count = sum(
-                1 for idx in self.cuda_visible if idx >= 0 and idx < self.hip_count
-            )
-        else:
-            count = self.hip_count
-
-        return count
-
-    def _count_cuda(self) -> int:
-        if not self.cuda_count:
-            return 0
-        if self.cuda_visible is not None:
-            count = sum(
-                1 for idx in self.cuda_visible if idx >= 0 and idx < self.cuda_count
-            )
-        else:
-            count = self.cuda_count
-        return count
+        return {Provider.CUDA: cuda, Provider.HIP: hip if hip is not None else cuda}
 
     def c_count(self) -> int:
-        cuda_count = self._count_cuda()
-        hip_count = self._count_hip()
-        return cuda_count + hip_count
+        return self.overall_count
 
     def c_get(self, ord: int) -> Any:
         if ord < 0 or ord >= self.overall_count:
@@ -403,7 +316,13 @@ class MockImplementation(Implementation):
             index = ord - (self.cuda_count or 0)
             provider = "HIP"
 
-        return MockCObj(ord=ord, name=self.names[ord], provider=provider, index=index, **self.cobj_args)  # type: ignore[arg-type]
+        return MockCObj(
+            ord=ord,
+            name=self.names[ord],
+            provider=provider,
+            index=index,
+            **self.cobj_args,  # type: ignore[arg-type]
+        )
 
     def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
         if self.cuda_count is None or gpu_index < 0 or gpu_index >= self.cuda_count:

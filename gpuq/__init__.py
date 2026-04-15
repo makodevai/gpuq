@@ -91,11 +91,6 @@ def query(
     for providers and GPUs as described above) will only consider GPUs that are visible
     according to the relevant *_VISIBLE_DEVICES environmental variable. Otherwise
     the variables are ignored and all GPUs are always considered.
-
-    > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-    > when obtaining information about GPUs, regardless of ``visible_only`` argument.
-    > This might cause race conditions if the variables are also used/modified by other
-    > parts of the system at the same time. Please keep this in mind when using it.
     """
     nonempty = False
     if required is True:
@@ -116,41 +111,41 @@ def query(
                         f"Provider {p.name} is required but the relevant runtime is missing from the system or failed to load, error: {err}!"
                     )
 
-    with impl.save_visible() as visible:
-        num = impl.c_count()
+    visible = impl.parse_visible()
+    num = impl.c_count()
 
-        if not num:
-            if required is not None or nonempty:
-                raise RuntimeError("No GPUs detected")
-            return []
+    if not num:
+        if required is not None or nonempty:
+            raise RuntimeError("No GPUs detected")
+        return []
 
-        ret = []
+    ret = []
 
-        for idx in range(num):
-            dev = impl.c_get(idx)
-            prov = Provider[dev.provider]
+    for idx in range(num):
+        dev = impl.c_get(idx)
+        prov = Provider[dev.provider]
 
-            visible_set = visible.get(prov)
-            local_index = _global_to_visible(dev.index, visible_set)
-            if visible_only and local_index is None:  # not visible
-                continue
+        visible_set = visible.get(prov)
+        local_index = _global_to_visible(dev.index, visible_set)
+        if visible_only and local_index is None:  # not visible
+            continue
 
-            if required is not None and prov & required:
-                required &= ~prov  # mark the current provider as no longer required
+        if required is not None and prov & required:
+            required &= ~prov  # mark the current provider as no longer required
 
-            if provider & prov:
-                ret.append(Properties(dev, local_index, impl))
+        if provider & prov:
+            ret.append(Properties(dev, local_index, impl))
 
-        if required:
-            missing = [p for p in Provider if p & required]
-            raise RuntimeError(
-                f"GPUs of the following required providers could not be found: {missing}"
-            )
+    if required:
+        missing = [p for p in Provider if p & required]
+        raise RuntimeError(
+            f"GPUs of the following required providers could not be found: {missing}"
+        )
 
-        if not ret and nonempty:
-            raise RuntimeError("No suitable GPUs detected")
+    if not ret and nonempty:
+        raise RuntimeError("No suitable GPUs detected")
 
-        return ret
+    return ret
 
 
 def count(
@@ -164,11 +159,6 @@ def count(
     if ``visible_only`` is True, return the number of matching GPUs that visible according to
     *_VISIBLE_DEVICES environment variables. Otherwise the number of all GPUs matching the
     criteria is returned.
-
-    > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-    > when obtaining information about GPUs, if ``visible_only`` is False.
-    > This might cause race conditions if the variables are also used/modified by other
-    > parts of the system at the same time. Please keep this in mind when using it.
     """
     if provider == Provider.any() or provider is None:
         provider = Provider.all()
@@ -177,11 +167,18 @@ def count(
         impl = _get_impl()
 
     if provider == Provider.all():
-        if visible_only:
-            return impl.c_count()
-        else:
-            with impl.save_visible():
-                return impl.c_count()
+        visible = impl.parse_visible()
+        total = impl.c_count()
+        if not visible_only:
+            return total
+        visible_count = 0
+        for idx in range(total):
+            dev = impl.c_get(idx)
+            prov = Provider[dev.provider]
+            visible_set = visible.get(prov)
+            if _global_to_visible(dev.index, visible_set) is not None:
+                visible_count += 1
+        return visible_count
     else:
         return len(
             query(
@@ -199,11 +196,6 @@ def get(
     """Return the ``idx``-th GPU from the list of GPus for the specified provider(s).
     If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
     environment variables are considered for indexing (see ``count``).
-
-    > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-    > when obtaining information about GPUs, regardless of ``visible_only`` argument.
-    > This might cause race conditions if the variables are also used/modified by other
-    > parts of the system at the same time. Please keep this in mind when using it.
     """
     if provider == Provider.any() or provider is None:
         provider = Provider.all()
@@ -212,12 +204,12 @@ def get(
         impl = _get_impl()
 
     if provider == Provider.all() and not visible_only:
-        with impl.save_visible() as visible:
-            cobj = impl.c_get(idx)
-            prov = Provider[cobj.provider]
-            visible_set = visible.get(prov)
-            local_index = _global_to_visible(cobj.index, visible_set)
-            return Properties(cobj, local_index, impl)
+        visible = impl.parse_visible()
+        cobj = impl.c_get(idx)
+        prov = Provider[cobj.provider]
+        visible_set = visible.get(prov)
+        local_index = _global_to_visible(cobj.index, visible_set)
+        return Properties(cobj, local_index, impl)
     else:
         ret: list[Properties] = query(
             provider=provider, required=None, visible_only=visible_only, impl=impl
@@ -305,12 +297,14 @@ def mock(
     # cuda runtime args
     cuda_utilisation: int = 0,
     cuda_memory: int = 1,
-    cuda_pids: list[int] = [],
+    cuda_pids: list[int] | None = None,
     # hip runtime args
     hip_gfx: str = "942",
     hip_drm: int = 128,
     hip_node_idx: int = 2,
-    hip_pids: list[int] = [],
+    hip_pids: list[int] | None = None,
+    hip_utilisation: int = 0,
+    hip_memory: int = 0,
     _hip_drm_stride: int = 8,
 ) -> Implementation:
     args = {

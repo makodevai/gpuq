@@ -13,10 +13,10 @@ from pathlib import Path
 
 package_name = 'gpuq'
 description = 'A multi-vendor GPU querying utility with minimal dependencies'
-author = 'Mako'
+author = 'Makora'
 author_email = 'support@mako.dev'
-url = 'https://github.com/makodevai/gpuq'
-download_url = 'https://github.com/makodevai/gpuq'
+url = 'https://github.com/makora-ai/gpuq'
+download_url = 'https://github.com/makora-ai/gpuq'
 data_files = {}
 
 version_file = Path(__file__).parent.joinpath(package_name, 'version.py')

@@ -1,3 +1,7 @@
+/* AMD GPU support via AMD SMI + HSA Runtime.
+   Type definitions below are copied from AMD SMI / HSA headers (ROCm 7.2.0)
+   to avoid a build-time dependency on the ROCm SDK.  May need updating if
+   AMD changes struct layouts in a future ROCm release. */
 
 #include <stddef.h>
 #include <string.h>
@@ -6,356 +10,327 @@
 #include "types.h"
 
 
-#define hipGetDeviceProperties hipGetDevicePropertiesR0600
-#define hipDeviceProp_t hipDeviceProp_tR0600
-#define hipChooseDevice hipChooseDeviceR0600
+/* Opaque handles */
+typedef void*    amdsmi_processor_handle;  /* per-GPU handle */
+typedef void*    amdsmi_socket_handle;     /* per-socket (physical package) handle */
+typedef uint32_t amdsmi_status_t;         /* return code, 0 = success */
+typedef uint32_t amdsmi_process_handle_t; /* PID type for process queries */
 
+#define AMDSMI_STATUS_SUCCESS       0
+#define AMDSMI_INIT_AMD_GPUS        (1 << 1)  /* init flag: GPUs only, skip CPUs */
+#define AMDSMI_MAX_STRING_LENGTH    256
+#define AMDSMI_MAX_CACHE_TYPES      10
+#define AMDSMI_MAX_DEVICES          32
+#define AMDSMI_MAX_PROCS            128
+#define AMDSMI_MEM_TYPE_VRAM        0          /* memory type selector for VRAM queries */
 
+/* GPU ASIC info — name, compute units, gfx version, etc. */
 typedef struct {
-    // 32-bit Atomics
-    unsigned hasGlobalInt32Atomics : 1;     ///< 32-bit integer atomics for global memory.
-    unsigned hasGlobalFloatAtomicExch : 1;  ///< 32-bit float atomic exch for global memory.
-    unsigned hasSharedInt32Atomics : 1;     ///< 32-bit integer atomics for shared memory.
-    unsigned hasSharedFloatAtomicExch : 1;  ///< 32-bit float atomic exch for shared memory.
-    unsigned hasFloatAtomicAdd : 1;  ///< 32-bit float atomic add in global and shared memory.
+    char     market_name[AMDSMI_MAX_STRING_LENGTH];
+    uint32_t vendor_id;
+    char     vendor_name[AMDSMI_MAX_STRING_LENGTH];
+    uint32_t subvendor_id;
+    uint64_t device_id;
+    uint32_t rev_id;
+    char     asic_serial[AMDSMI_MAX_STRING_LENGTH];
+    uint32_t oam_id;
+    uint32_t num_of_compute_units;      /* CU count, 0xFFFFFFFF = unknown */
+    uint64_t target_graphics_version;   /* gfx version as hex, e.g. 0x950 = gfx950 */
+    uint32_t subsystem_id;
+    uint32_t reserved[21];
+} amdsmi_asic_info_t;
 
-    // 64-bit Atomics
-    unsigned hasGlobalInt64Atomics : 1;  ///< 64-bit integer atomics for global memory.
-    unsigned hasSharedInt64Atomics : 1;  ///< 64-bit integer atomics for shared memory.
+/* GPU cache hierarchy info */
+typedef struct {
+    uint32_t num_cache_types;
+    struct {
+        uint32_t cache_properties;
+        uint32_t cache_size;       /* in KB */
+        uint32_t cache_level;
+        uint32_t max_num_cu_shared;
+        uint32_t num_cache_instance;
+        uint32_t reserved[3];
+    } cache[AMDSMI_MAX_CACHE_TYPES];
+    uint32_t reserved[15];
+} amdsmi_gpu_cache_info_t;
 
-    // Doubles
-    unsigned hasDoubles : 1;  ///< Double-precision floating point.
+/* GPU engine utilisation — gfx, memory controller, multimedia */
+typedef struct {
+    uint32_t gfx_activity;   /* graphics engine busy, 0-100 % */
+    uint32_t umc_activity;   /* memory controller busy, 0-100 % */
+    uint32_t mm_activity;    /* multimedia engine busy, 0-100 % */
+    uint32_t reserved[13];
+} amdsmi_engine_usage_t;
 
-    // Warp cross-lane operations
-    unsigned hasWarpVote : 1;     ///< Warp vote instructions (__any, __all).
-    unsigned hasWarpBallot : 1;   ///< Warp ballot instructions (__ballot).
-    unsigned hasWarpShuffle : 1;  ///< Warp shuffle operations. (__shfl_*).
-    unsigned hasFunnelShift : 1;  ///< Funnel two words into one with shift&mask caps.
+/* Per-process GPU usage info */
+typedef struct {
+    char name[AMDSMI_MAX_STRING_LENGTH];
+    amdsmi_process_handle_t pid;
+    uint64_t mem;
+    struct {
+        uint64_t gfx;
+        uint64_t enc;
+        uint32_t reserved[12];
+    } engine_usage;
+    struct {
+        uint64_t gtt_mem;   /* system memory mapped for GPU */
+        uint64_t cpu_mem;
+        uint64_t vram_mem;  /* GPU VRAM used by this process */
+        uint32_t reserved[10];
+    } memory_usage;
+    char container_name[AMDSMI_MAX_STRING_LENGTH];
+    uint32_t cu_occupancy;
+    uint32_t evicted_time;
+    uint32_t reserved[10];
+} amdsmi_proc_info_t;
 
-    // Sync
-    unsigned hasThreadFenceSystem : 1;  ///< __threadfence_system.
-    unsigned hasSyncThreadsExt : 1;     ///< __syncthreads_count, syncthreads_and, syncthreads_or.
+/* Device enumeration — DRM render node, HIP/HSA IDs, UUID */
+typedef struct {
+    uint32_t drm_render;  /* /dev/dri/renderDN minor number */
+    uint32_t drm_card;    /* /dev/dri/cardN minor number */
+    uint32_t hsa_id;
+    uint32_t hip_id;
+    char hip_uuid[AMDSMI_MAX_STRING_LENGTH];
+} amdsmi_enumeration_info_t;
 
-    // Misc
-    unsigned hasSurfaceFuncs : 1;        ///< Surface functions.
-    unsigned has3dGrid : 1;              ///< Grid and group dims are 3D (rather than 2D).
-    unsigned hasDynamicParallelism : 1;  ///< Dynamic parallelism.
-} hipDeviceArch_t;
-
-
-typedef struct hipUUID_t {
-    char bytes[16];
-} hipUUID;
-
-
-typedef struct hipDeviceProp_t {
-    char name[256];                   ///< Device name.
-    hipUUID uuid;                     ///< UUID of a device
-    char luid[8];                     ///< 8-byte unique identifier. Only valid on windows
-    unsigned int luidDeviceNodeMask;  ///< LUID node mask
-    size_t totalGlobalMem;            ///< Size of global memory region (in bytes).
-    size_t sharedMemPerBlock;         ///< Size of shared memory per block (in bytes).
-    int regsPerBlock;                 ///< Registers per block.
-    int warpSize;                     ///< Warp size.
-    size_t memPitch;                  ///< Maximum pitch in bytes allowed by memory copies
-    int maxThreadsPerBlock;           ///< Max work items per work group or workgroup max size.
-    int maxThreadsDim[3];             ///< Max number of threads in each dimension (XYZ) of a block.
-    int maxGridSize[3];               ///< Max grid dimensions (XYZ).
-    int clockRate;                    ///< Max clock frequency of the multiProcessors in khz.
-    size_t totalConstMem;             ///< Size of shared constant memory region on the device
-    int major;  ///< Major compute capability.  On HCC, this is an approximation and features may
-    int minor;  ///< Minor compute capability.  On HCC, this is an approximation and features may
-    size_t textureAlignment;       ///< Alignment requirement for textures
-    size_t texturePitchAlignment;  ///< Pitch alignment requirement for texture references bound to
-    int deviceOverlap;             ///< Deprecated. Use asyncEngineCount instead
-    int multiProcessorCount;       ///< Number of multi-processors (compute units).
-    int kernelExecTimeoutEnabled;  ///< Run time limit for kernels executed on the device
-    int integrated;                ///< APU vs dGPU
-    int canMapHostMemory;          ///< Check whether HIP can map host memory
-    int computeMode;               ///< Compute mode.
-    int maxTexture1D;              ///< Maximum number of elements in 1D images
-    int maxTexture1DMipmap;        ///< Maximum 1D mipmap texture size
-    int maxTexture1DLinear;        ///< Maximum size for 1D textures bound to linear memory
-    int maxTexture2D[2];  ///< Maximum dimensions (width, height) of 2D images, in image elements
-    int maxTexture2DMipmap[2];  ///< Maximum number of elements in 2D array mipmap of images
-    int maxTexture2DLinear[3];  ///< Maximum 2D tex dimensions if tex are bound to pitched memory
-    int maxTexture2DGather[2];  ///< Maximum 2D tex dimensions if gather has to be performed
-    int maxTexture3D[3];  ///< Maximum dimensions (width, height, depth) of 3D images, in image
-    int maxTexture3DAlt[3];           ///< Maximum alternate 3D texture dims
-    int maxTextureCubemap;            ///< Maximum cubemap texture dims
-    int maxTexture1DLayered[2];       ///< Maximum number of elements in 1D array images
-    int maxTexture2DLayered[3];       ///< Maximum number of elements in 2D array images
-    int maxTextureCubemapLayered[2];  ///< Maximum cubemaps layered texture dims
-    int maxSurface1D;                 ///< Maximum 1D surface size
-    int maxSurface2D[2];              ///< Maximum 2D surface size
-    int maxSurface3D[3];              ///< Maximum 3D surface size
-    int maxSurface1DLayered[2];       ///< Maximum 1D layered surface size
-    int maxSurface2DLayered[3];       ///< Maximum 2D layared surface size
-    int maxSurfaceCubemap;            ///< Maximum cubemap surface size
-    int maxSurfaceCubemapLayered[2];  ///< Maximum cubemap layered surface size
-    size_t surfaceAlignment;          ///< Alignment requirement for surface
-    int concurrentKernels;         ///< Device can possibly execute multiple kernels concurrently.
-    int ECCEnabled;                ///< Device has ECC support enabled
-    int pciBusID;                  ///< PCI Bus ID.
-    int pciDeviceID;               ///< PCI Device ID.
-    int pciDomainID;               ///< PCI Domain ID
-    int tccDriver;                 ///< 1:If device is Tesla device using TCC driver, else 0
-    int asyncEngineCount;          ///< Number of async engines
-    int unifiedAddressing;         ///< Does device and host share unified address space
-    int memoryClockRate;           ///< Max global memory clock frequency in khz.
-    int memoryBusWidth;            ///< Global memory bus width in bits.
-    int l2CacheSize;               ///< L2 cache size.
-    int persistingL2CacheMaxSize;  ///< Device's max L2 persisting lines in bytes
-    int maxThreadsPerMultiProcessor;    ///< Maximum resident threads per multi-processor.
-    int streamPrioritiesSupported;      ///< Device supports stream priority
-    int globalL1CacheSupported;         ///< Indicates globals are cached in L1
-    int localL1CacheSupported;          ///< Locals are cahced in L1
-    size_t sharedMemPerMultiprocessor;  ///< Amount of shared memory available per multiprocessor.
-    int regsPerMultiprocessor;          ///< registers available per multiprocessor
-    int managedMemory;         ///< Device supports allocating managed memory on this system
-    int isMultiGpuBoard;       ///< 1 if device is on a multi-GPU board, 0 if not.
-    int multiGpuBoardGroupID;  ///< Unique identifier for a group of devices on same multiboard GPU
-    int hostNativeAtomicSupported;         ///< Link between host and device supports native atomics
-    int singleToDoublePrecisionPerfRatio;  ///< Deprecated. CUDA only.
-    int pageableMemoryAccess;              ///< Device supports coherently accessing pageable memory
-    int concurrentManagedAccess;  ///< Device can coherently access managed memory concurrently with
-    int computePreemptionSupported;         ///< Is compute preemption supported on the device
-    int canUseHostPointerForRegisteredMem;  ///< Device can access host registered memory with same
-    int cooperativeLaunch;                  ///< HIP device supports cooperative launch
-    int cooperativeMultiDeviceLaunch;       ///< HIP device supports cooperative launch on multiple
-    size_t sharedMemPerBlockOptin;  ///< Per device m ax shared mem per block usable by special opt in
-    int pageableMemoryAccessUsesHostPageTables;  ///< Device accesses pageable memory via the host's
-    int directManagedMemAccessFromHost;  ///< Host can directly access managed memory on the device
-    int maxBlocksPerMultiProcessor;      ///< Max number of blocks on CU
-    int accessPolicyMaxWindowSize;       ///< Max value of access policy window
-    size_t reservedSharedMemPerBlock;    ///< Shared memory reserved by driver per block
-    int hostRegisterSupported;           ///< Device supports hipHostRegister
-    int sparseHipArraySupported;         ///< Indicates if device supports sparse hip arrays
-    int hostRegisterReadOnlySupported;   ///< Device supports using the hipHostRegisterReadOnly flag
-    int timelineSemaphoreInteropSupported;  ///< Indicates external timeline semaphore support
-    int memoryPoolsSupported;  ///< Indicates if device supports hipMallocAsync and hipMemPool APIs
-    int gpuDirectRDMASupported;                    ///< Indicates device support of RDMA APIs
-    unsigned int gpuDirectRDMAFlushWritesOptions;  ///< Bitmask to be interpreted according to
-    int gpuDirectRDMAWritesOrdering;               ///< value of hipGPUDirectRDMAWritesOrdering
-    unsigned int memoryPoolSupportedHandleTypes;  ///< Bitmask of handle types support with mempool based IPC
-    int deferredMappingHipArraySupported;  ///< Device supports deferred mapping HIP arrays and HIP
-    int ipcEventSupported;                 ///< Device supports IPC events
-    int clusterLaunch;                     ///< Device supports cluster launch
-    int unifiedFunctionPointers;           ///< Indicates device supports unified function pointers
-    int reserved[63];                      ///< CUDA Reserved.
-
-    int hipReserved[32];  ///< Reserved for adding new entries for HIP/CUDA.
-
-    /* HIP Only struct members */
-    char gcnArchName[256];                    ///< AMD GCN Arch Name. HIP Only.
-    size_t maxSharedMemoryPerMultiProcessor;  ///< Maximum Shared Memory Per CU. HIP Only.
-    int clockInstructionRate;  ///< Frequency in khz of the timer used by the device-side "clock*"
-                               ///< instructions.  New for HIP.
-    hipDeviceArch_t arch;      ///< Architectural feature flags.  New for HIP.
-    unsigned int* hdpMemFlushCntl;            ///< Addres of HDP_MEM_COHERENCY_FLUSH_CNTL register
-    unsigned int* hdpRegFlushCntl;            ///< Addres of HDP_REG_COHERENCY_FLUSH_CNTL register
-    int cooperativeMultiDeviceUnmatchedFunc;  ///< HIP device supports cooperative launch on
-                                              ///< multiple
-                                              /// devices with unmatched functions
-    int cooperativeMultiDeviceUnmatchedGridDim;    ///< HIP device supports cooperative launch on
-                                                   ///< multiple
-                                                   /// devices with unmatched grid dimensions
-    int cooperativeMultiDeviceUnmatchedBlockDim;   ///< HIP device supports cooperative launch on
-                                                   ///< multiple
-                                                   /// devices with unmatched block dimensions
-    int cooperativeMultiDeviceUnmatchedSharedMem;  ///< HIP device supports cooperative launch on
-                                                   ///< multiple
-                                                   /// devices with unmatched shared memories
-    int isLargeBar;                                ///< 1: if it is a large PCI bar device, else 0
-    int asicRevision;                              ///< Revision of the GPU in this device
-} hipDeviceProp_t;
+/* KFD (kernel fusion driver) info — node topology IDs */
+typedef struct {
+    uint64_t kfd_id;
+    uint32_t node_id;              /* KFD node index */
+    uint32_t current_partition_id;
+    uint32_t reserved[12];
+} amdsmi_kfd_info_t;
 
 
-typedef enum hipError_t {
-    hipSuccess = 0,  ///< Successful completion.
-    hipErrorInvalidValue = 1,  ///< One or more of the parameters passed to the API call is NULL
-                               ///< or not in an acceptable range.
-    hipErrorOutOfMemory = 2,   ///< out of memory range.
-    // Deprecated
-    hipErrorMemoryAllocation = 2,  ///< Memory allocation error.
-    hipErrorNotInitialized = 3,    ///< Invalid not initialized
-    // Deprecated
-    hipErrorInitializationError = 3,
-    hipErrorDeinitialized = 4,      ///< Deinitialized
-    hipErrorProfilerDisabled = 5,
-    hipErrorProfilerNotInitialized = 6,
-    hipErrorProfilerAlreadyStarted = 7,
-    hipErrorProfilerAlreadyStopped = 8,
-    hipErrorInvalidConfiguration = 9,  ///< Invalide configuration
-    hipErrorInvalidPitchValue = 12,   ///< Invalid pitch value
-    hipErrorInvalidSymbol = 13,   ///< Invalid symbol
-    hipErrorInvalidDevicePointer = 17,  ///< Invalid Device Pointer
-    hipErrorInvalidMemcpyDirection = 21,  ///< Invalid memory copy direction
-    hipErrorInsufficientDriver = 35,
-    hipErrorMissingConfiguration = 52,
-    hipErrorPriorLaunchFailure = 53,
-    hipErrorInvalidDeviceFunction = 98,  ///< Invalid device function
-    hipErrorNoDevice = 100,  ///< Call to hipGetDeviceCount returned 0 devices
-    hipErrorInvalidDevice = 101,  ///< DeviceID must be in range from 0 to compute-devices.
-    hipErrorInvalidImage = 200,   ///< Invalid image
-    hipErrorInvalidContext = 201,  ///< Produced when input context is invalid.
-    hipErrorContextAlreadyCurrent = 202,
-    hipErrorMapFailed = 205,
-    // Deprecated
-    hipErrorMapBufferObjectFailed = 205,  ///< Produced when the IPC memory attach failed from ROCr.
-    hipErrorUnmapFailed = 206,
-    hipErrorArrayIsMapped = 207,
-    hipErrorAlreadyMapped = 208,
-    hipErrorNoBinaryForGpu = 209,
-    hipErrorAlreadyAcquired = 210,
-    hipErrorNotMapped = 211,
-    hipErrorNotMappedAsArray = 212,
-    hipErrorNotMappedAsPointer = 213,
-    hipErrorECCNotCorrectable = 214,
-    hipErrorUnsupportedLimit = 215,   ///< Unsupported limit
-    hipErrorContextAlreadyInUse = 216,   ///< The context is already in use
-    hipErrorPeerAccessUnsupported = 217,
-    hipErrorInvalidKernelFile = 218,  ///< In CUDA DRV, it is CUDA_ERROR_INVALID_PTX
-    hipErrorInvalidGraphicsContext = 219,
-    hipErrorInvalidSource = 300,   ///< Invalid source.
-    hipErrorFileNotFound = 301,   ///< the file is not found.
-    hipErrorSharedObjectSymbolNotFound = 302,
-    hipErrorSharedObjectInitFailed = 303,   ///< Failed to initialize shared object.
-    hipErrorOperatingSystem = 304,   ///< Not the correct operating system
-    hipErrorInvalidHandle = 400,  ///< Invalide handle
-    // Deprecated
-    hipErrorInvalidResourceHandle = 400,  ///< Resource handle (hipEvent_t or hipStream_t) invalid.
-    hipErrorIllegalState = 401, ///< Resource required is not in a valid state to perform operation.
-    hipErrorNotFound = 500,   ///< Not found
-    hipErrorNotReady = 600,  ///< Indicates that asynchronous operations enqueued earlier are not
-                             ///< ready.  This is not actually an error, but is used to distinguish
-                             ///< from hipSuccess (which indicates completion).  APIs that return
-                             ///< this error include hipEventQuery and hipStreamQuery.
-    hipErrorIllegalAddress = 700,
-    hipErrorLaunchOutOfResources = 701,  ///< Out of resources error.
-    hipErrorLaunchTimeOut = 702,   ///< Timeout for the launch.
-    hipErrorPeerAccessAlreadyEnabled = 704,  ///< Peer access was already enabled from the current
-                                             ///< device.
-    hipErrorPeerAccessNotEnabled = 705,  ///< Peer access was never enabled from the current device.
-    hipErrorSetOnActiveProcess = 708,   ///< The process is active.
-    hipErrorContextIsDestroyed = 709,   ///< The context is already destroyed
-    hipErrorAssert = 710,  ///< Produced when the kernel calls assert.
-    hipErrorHostMemoryAlreadyRegistered = 712,  ///< Produced when trying to lock a page-locked
-                                                ///< memory.
-    hipErrorHostMemoryNotRegistered = 713,  ///< Produced when trying to unlock a non-page-locked
-                                            ///< memory.
-    hipErrorLaunchFailure = 719,  ///< An exception occurred on the device while executing a kernel.
-    hipErrorCooperativeLaunchTooLarge = 720,  ///< This error indicates that the number of blocks
-                                              ///< launched per grid for a kernel that was launched
-                                              ///< via cooperative launch APIs exceeds the maximum
-                                              ///< number of allowed blocks for the current device.
-    hipErrorNotSupported = 801,  ///< Produced when the hip API is not supported/implemented
-    hipErrorStreamCaptureUnsupported = 900,  ///< The operation is not permitted when the stream
-                                             ///< is capturing.
-    hipErrorStreamCaptureInvalidated = 901,  ///< The current capture sequence on the stream
-                                             ///< has been invalidated due to a previous error.
-    hipErrorStreamCaptureMerge = 902,  ///< The operation would have resulted in a merge of
-                                       ///< two independent capture sequences.
-    hipErrorStreamCaptureUnmatched = 903,  ///< The capture was not initiated in this stream.
-    hipErrorStreamCaptureUnjoined = 904,  ///< The capture sequence contains a fork that was not
-                                          ///< joined to the primary stream.
-    hipErrorStreamCaptureIsolation = 905,  ///< A dependency would have been created which crosses
-                                           ///< the capture sequence boundary. Only implicit
-                                           ///< in-stream ordering dependencies  are allowed
-                                           ///< to cross the boundary
-    hipErrorStreamCaptureImplicit = 906,  ///< The operation would have resulted in a disallowed
-                                          ///< implicit dependency on a current capture sequence
-                                          ///< from hipStreamLegacy.
-    hipErrorCapturedEvent = 907,  ///< The operation is not permitted on an event which was last
-                                  ///< recorded in a capturing stream.
-    hipErrorStreamCaptureWrongThread = 908,  ///< A stream capture sequence not initiated with
-                                             ///< the hipStreamCaptureModeRelaxed argument to
-                                             ///< hipStreamBeginCapture was passed to
-                                             ///< hipStreamEndCapture in a different thread.
-    hipErrorGraphExecUpdateFailure = 910,  ///< This error indicates that the graph update
-                                           ///< not performed because it included changes which
-                                           ///< violated constraintsspecific to instantiated graph
-                                           ///< update.
-    hipErrorInvalidChannelDescriptor = 911,  ///< Invalid channel descriptor.
-    hipErrorInvalidTexture = 912,  ///< Invalid texture.
-    hipErrorUnknown = 999,  ///< Unknown error.
-    // HSA Runtime Error Codes start here.
-    hipErrorRuntimeMemory = 1052,  ///< HSA runtime memory call returned error.  Typically not seen
-                                   ///< in production systems.
-    hipErrorRuntimeOther = 1053,  ///< HSA runtime call other than memory returned error.  Typically
-                                  ///< not seen in production systems.
-    hipErrorTbd  ///< Marker that more error codes are needed.
-} hipError_t;
+typedef amdsmi_status_t (*amdsmi_init_t)(uint64_t);
+typedef amdsmi_status_t (*amdsmi_shut_down_t)(void);
+typedef amdsmi_status_t (*amdsmi_get_socket_handles_t)(uint32_t*, amdsmi_socket_handle*);
+typedef amdsmi_status_t (*amdsmi_get_processor_handles_t)(amdsmi_socket_handle, uint32_t*, amdsmi_processor_handle*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_asic_info_t)(amdsmi_processor_handle, amdsmi_asic_info_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_cache_info_t)(amdsmi_processor_handle, amdsmi_gpu_cache_info_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_device_uuid_t)(amdsmi_processor_handle, unsigned int*, char*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_memory_total_t)(amdsmi_processor_handle, uint32_t, uint64_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_memory_usage_t)(amdsmi_processor_handle, uint32_t, uint64_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_activity_t)(amdsmi_processor_handle, amdsmi_engine_usage_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_process_list_t)(amdsmi_processor_handle, uint32_t*, amdsmi_proc_info_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_enumeration_info_t)(amdsmi_processor_handle, amdsmi_enumeration_info_t*);
+typedef amdsmi_status_t (*amdsmi_get_gpu_kfd_info_t)(amdsmi_processor_handle, amdsmi_kfd_info_t*);
 
 
-typedef hipError_t (*hipGetDeviceProperties_t)(hipDeviceProp_t* prop, int deviceId);
-typedef hipError_t (*hipGetDeviceCount_t)(int* count);
-typedef const char* (*hipGetErrorString_t)(hipError_t error);
+/* ── HSA Runtime types (hsa.h + hsa_ext_amd.h, ROCm 7.2.0) ──────────── */
+
+typedef uint32_t hsa_status_t;
+typedef struct { uint64_t handle; } hsa_agent_t;
+
+#define HSA_STATUS_SUCCESS              0
+
+/* hsa_agent_get_info attribute IDs (core) */
+#define HSA_AGENT_INFO_WAVEFRONT_SIZE       6   /* uint32_t */
+#define HSA_AGENT_INFO_WORKGROUP_MAX_SIZE   8   /* uint32_t */
+#define HSA_AGENT_INFO_DEVICE               17  /* uint32_t, 1 = GPU */
+
+/* hsa_agent_get_info attribute IDs (AMD vendor extensions) */
+#define HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT   0xA002  /* uint32_t */
+#define HSA_AMD_AGENT_INFO_DRIVER_NODE_ID       0xA004  /* uint32_t */
+#define HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU     0xA00A  /* uint32_t */
+#define HSA_AMD_AGENT_INFO_COOPERATIVE_QUEUES   0xA010  /* bool */
+#define HSA_AMD_AGENT_INFO_NUM_SDMA_ENG         0xA10A  /* uint32_t */
+
+typedef hsa_status_t (*hsa_init_t)(void);
+typedef hsa_status_t (*hsa_shut_down_t)(void);
+typedef hsa_status_t (*hsa_agent_get_info_t)(hsa_agent_t, uint32_t, void*);
+typedef hsa_status_t (*hsa_iterate_agents_t)(
+    hsa_status_t (*callback)(hsa_agent_t, void*), void*);
+
+/* Per-GPU data extracted from HSA, keyed by KFD driver_node_id */
+typedef struct {
+    uint32_t driver_node_id;
+    uint32_t wavefront_size;
+    uint32_t workgroup_max_size;
+    uint32_t max_waves_per_cu;
+    uint32_t num_sdma_eng;
+    char     cooperative;
+} HsaGpuInfo;
+
+#define HSA_MAX_GPUS 32
+
+static void*                   hsa_dl          = NULL;
+static hsa_agent_get_info_t    hsa_info_fn     = NULL;
+static HsaGpuInfo              hsa_gpus[HSA_MAX_GPUS];
+static int                     hsa_gpu_count   = 0;
+
+
+static hsa_status_t hsa_agent_cb(hsa_agent_t agent, void* data) {
+    (void)data;
+    uint32_t dev_type = 0;
+    if (hsa_info_fn(agent, HSA_AGENT_INFO_DEVICE, &dev_type) != HSA_STATUS_SUCCESS)
+        return HSA_STATUS_SUCCESS;
+    if (dev_type != 1)  /* not a GPU */
+        return HSA_STATUS_SUCCESS;
+    if (hsa_gpu_count >= HSA_MAX_GPUS)
+        return HSA_STATUS_SUCCESS;
+
+    HsaGpuInfo* g = &hsa_gpus[hsa_gpu_count];
+    memset(g, 0, sizeof(*g));
+
+    hsa_info_fn(agent, HSA_AMD_AGENT_INFO_DRIVER_NODE_ID,   &g->driver_node_id);
+    hsa_info_fn(agent, HSA_AGENT_INFO_WAVEFRONT_SIZE,       &g->wavefront_size);
+    hsa_info_fn(agent, HSA_AGENT_INFO_WORKGROUP_MAX_SIZE,   &g->workgroup_max_size);
+    hsa_info_fn(agent, HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU, &g->max_waves_per_cu);
+    hsa_info_fn(agent, HSA_AMD_AGENT_INFO_NUM_SDMA_ENG,     &g->num_sdma_eng);
+
+    uint32_t coop = 0;
+    if (hsa_info_fn(agent, HSA_AMD_AGENT_INFO_COOPERATIVE_QUEUES, &coop) == HSA_STATUS_SUCCESS)
+        g->cooperative = (char)(coop != 0);
+
+    hsa_gpu_count++;
+    return HSA_STATUS_SUCCESS;
+}
+
+
+static void try_load_hsa() {
+    if (hsa_dl) return;
+
+    hsa_dl = dlopen("libhsa-runtime64.so", RTLD_NOW | RTLD_LOCAL);
+    if (!hsa_dl)
+        hsa_dl = dlopen("/opt/rocm/lib/libhsa-runtime64.so", RTLD_NOW | RTLD_LOCAL);
+    if (!hsa_dl) return;
+
+    hsa_init_t init_fn = (hsa_init_t)dlsym(hsa_dl, "hsa_init");
+    hsa_iterate_agents_t iter_fn = (hsa_iterate_agents_t)dlsym(hsa_dl, "hsa_iterate_agents");
+    hsa_info_fn = (hsa_agent_get_info_t)dlsym(hsa_dl, "hsa_agent_get_info");
+
+    if (!init_fn || !iter_fn || !hsa_info_fn) {
+        dlclose(hsa_dl); hsa_dl = NULL; hsa_info_fn = NULL; return;
+    }
+
+    if (init_fn() != HSA_STATUS_SUCCESS) {
+        dlclose(hsa_dl); hsa_dl = NULL; hsa_info_fn = NULL; return;
+    }
+
+    hsa_gpu_count = 0;
+    iter_fn(hsa_agent_cb, NULL);
+}
+
+
+static const HsaGpuInfo* find_hsa_gpu(uint32_t node_id) {
+    for (int i = 0; i < hsa_gpu_count; i++) {
+        if (hsa_gpus[i].driver_node_id == node_id)
+            return &hsa_gpus[i];
+    }
+    return NULL;
+}
+
+
+/* ── AMD SMI + HSA state ─────────────────────────────────────────────── */
 
 static const char* dl_error_buffer = NULL;
 static size_t dl_error_len = 0;
 
-static void* hip_runtime_dl = NULL;
-static hipGetDeviceCount_t device_count_fn = NULL;
-static hipGetDeviceProperties_t device_props_fn = NULL;
-static hipGetErrorString_t error_str_fn = NULL;
+static void* amdsmi_dl = NULL;
+
+static amdsmi_init_t                    smi_init_fn       = NULL;
+static amdsmi_get_socket_handles_t      smi_sockets_fn    = NULL;
+static amdsmi_get_processor_handles_t   smi_procs_fn      = NULL;
+static amdsmi_get_gpu_asic_info_t       smi_asic_fn       = NULL;
+static amdsmi_get_gpu_cache_info_t      smi_cache_fn      = NULL;
+static amdsmi_get_gpu_device_uuid_t     smi_uuid_fn       = NULL;
+static amdsmi_get_gpu_memory_total_t    smi_mem_total_fn   = NULL;
+static amdsmi_get_gpu_memory_usage_t    smi_mem_usage_fn   = NULL;
+static amdsmi_get_gpu_activity_t        smi_activity_fn    = NULL;
+static amdsmi_get_gpu_process_list_t    smi_proc_list_fn   = NULL;
+static amdsmi_get_gpu_enumeration_info_t smi_enum_fn       = NULL;
+static amdsmi_get_gpu_kfd_info_t        smi_kfd_fn         = NULL;
+
+/* flat list of GPU handles, populated at init */
+static amdsmi_processor_handle gpu_handles[AMDSMI_MAX_DEVICES];
+static int gpu_count = 0;
 
 
-static int try_load_hipruntime() {
-    if (!hip_runtime_dl) {
-        hip_runtime_dl = dlopen("libamdhip64.so", RTLD_NOW|RTLD_LOCAL);
-        if (!hip_runtime_dl) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
-            for (int i=0; i<_num_hints; ++i) {
-                strcpy(_hints[i] + _hints_len[i], "libamdhip64.so");
-                hip_runtime_dl = dlopen(_hints[i], RTLD_NOW|RTLD_LOCAL);
-                _hints[i][_hints_len[i]] = 0;
-                if (hip_runtime_dl)
-                    break;
+static int try_load_amdsmi() {
+    if (amdsmi_dl) return 0;
 
-                record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
-            }
-        }
-
-        if (!hip_runtime_dl)
-            return -1;
+    amdsmi_dl = dlopen("libamd_smi.so", RTLD_NOW | RTLD_LOCAL);
+    if (!amdsmi_dl) {
+        record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
+        amdsmi_dl = dlopen("/opt/rocm/lib/libamd_smi.so", RTLD_NOW | RTLD_LOCAL);
+    }
+    if (!amdsmi_dl) {
+        record_dl_error(&dl_error_buffer, &dl_error_len, TRUE);
+        return -1;
     }
 
-    if (!device_count_fn) {
-        device_count_fn = (hipGetDeviceCount_t)dlsym(hip_runtime_dl, "hipGetDeviceCount");
-        if (!device_count_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
-            return -2;
+#define LOAD_SYM(var, sym)                                                  \
+    var = (typeof(var))dlsym(amdsmi_dl, #sym);                              \
+    if (!var) { record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);    \
+                dlclose(amdsmi_dl); amdsmi_dl = NULL; return -1; }
+
+    LOAD_SYM(smi_init_fn,       amdsmi_init)
+    LOAD_SYM(smi_sockets_fn,    amdsmi_get_socket_handles)
+    LOAD_SYM(smi_procs_fn,      amdsmi_get_processor_handles)
+    LOAD_SYM(smi_asic_fn,       amdsmi_get_gpu_asic_info)
+    LOAD_SYM(smi_uuid_fn,       amdsmi_get_gpu_device_uuid)
+    LOAD_SYM(smi_mem_total_fn,  amdsmi_get_gpu_memory_total)
+#undef LOAD_SYM
+
+    /* optional symbols — not fatal if missing */
+    smi_cache_fn     = (amdsmi_get_gpu_cache_info_t)dlsym(amdsmi_dl, "amdsmi_get_gpu_cache_info");
+    smi_mem_usage_fn = (amdsmi_get_gpu_memory_usage_t)dlsym(amdsmi_dl, "amdsmi_get_gpu_memory_usage");
+    smi_activity_fn  = (amdsmi_get_gpu_activity_t)dlsym(amdsmi_dl, "amdsmi_get_gpu_activity");
+    smi_proc_list_fn = (amdsmi_get_gpu_process_list_t)dlsym(amdsmi_dl, "amdsmi_get_gpu_process_list");
+    smi_enum_fn      = (amdsmi_get_gpu_enumeration_info_t)dlsym(amdsmi_dl, "amdsmi_get_gpu_enumeration_info");
+    smi_kfd_fn       = (amdsmi_get_gpu_kfd_info_t)dlsym(amdsmi_dl, "amdsmi_get_gpu_kfd_info");
+
+    if (smi_init_fn(AMDSMI_INIT_AMD_GPUS) != AMDSMI_STATUS_SUCCESS) {
+        dlclose(amdsmi_dl);
+        amdsmi_dl = NULL;
+        return -1;
+    }
+
+    /* enumerate all GPU handles into a flat array */
+    uint32_t sock_count = 0;
+    if (smi_sockets_fn(&sock_count, NULL) != AMDSMI_STATUS_SUCCESS || sock_count == 0) {
+        gpu_count = 0;
+        goto done;
+    }
+
+    amdsmi_socket_handle sockets[32];
+    if (sock_count > 32) sock_count = 32;
+    if (smi_sockets_fn(&sock_count, sockets) != AMDSMI_STATUS_SUCCESS) {
+        gpu_count = 0;
+        goto done;
+    }
+
+    gpu_count = 0;
+    for (uint32_t s = 0; s < sock_count && gpu_count < AMDSMI_MAX_DEVICES; s++) {
+        uint32_t proc_count = 0;
+        if (smi_procs_fn(sockets[s], &proc_count, NULL) != AMDSMI_STATUS_SUCCESS)
+            continue;
+
+        amdsmi_processor_handle procs[AMDSMI_MAX_DEVICES];
+        if (proc_count > AMDSMI_MAX_DEVICES) proc_count = AMDSMI_MAX_DEVICES;
+        if (smi_procs_fn(sockets[s], &proc_count, procs) != AMDSMI_STATUS_SUCCESS)
+            continue;
+
+        for (uint32_t p = 0; p < proc_count && gpu_count < AMDSMI_MAX_DEVICES; p++) {
+            gpu_handles[gpu_count++] = procs[p];
         }
     }
 
-    if (!device_props_fn) {
-        device_props_fn = (hipGetDeviceProperties_t)dlsym(hip_runtime_dl, "hipGetDevicePropertiesR0600");
-        if (!device_props_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
-            return -3;
-        }
-    }
-
-    if (!error_str_fn) {
-        error_str_fn = (hipGetErrorString_t)dlsym(hip_runtime_dl, "hipGetErrorString");
-        if (!error_str_fn) {
-            record_dl_error(&dl_error_buffer, &dl_error_len, FALSE);
-            return -4;
-        }
-    }
-
+done:
     if (dl_error_buffer) {
         free((void*)dl_error_buffer);
         dl_error_buffer = NULL;
         dl_error_len = 0;
     }
+
+    try_load_hsa();  /* optional, soft-fail */
     return 0;
 }
 
 
 int checkAmd() {
-    return try_load_hipruntime();
+    return try_load_amdsmi();
 }
 
 
@@ -364,84 +339,94 @@ const char* amdGetDlError() {
 }
 
 
-const char* amdGetErrStr(int status) {
-    try_load_hipruntime();
-    if (!error_str_fn)
-        return NULL;
-    if (!status)
-        return "";
-    return error_str_fn(status);
-}
-
-
 int amdGetDeviceCount(int* count) {
-    int status = try_load_hipruntime();
-    if (status)
-        return status;
-
-    hipError_t e = device_count_fn(count);
-    if (e != hipSuccess)
-        return (int)e;
-
+    if (try_load_amdsmi() != 0) return -1;
+    *count = gpu_count;
     return 0;
 }
 
 
 int amdGetDeviceProps(int index, GpuProp* obj) {
-    int status = try_load_hipruntime();
-    if (status)
-        return status;
+    if (try_load_amdsmi() != 0) return -1;
+    if (index < 0 || index >= gpu_count) return -1;
 
-    hipDeviceProp_t deviceProp;
-    hipError_t e = device_props_fn(&deviceProp, index);
-    if (e != hipSuccess) {
-        return (int)e;
+    amdsmi_processor_handle handle = gpu_handles[index];
+    amdsmi_asic_info_t asic = {0};
+
+    if (smi_asic_fn(handle, &asic) == AMDSMI_STATUS_SUCCESS) {
+        strncpy(obj->_name_storage, asic.market_name, 255);
+        obj->_name_storage[255] = '\0';
+        obj->sms_count = (asic.num_of_compute_units != 0xFFFFFFFF)
+            ? (int)asic.num_of_compute_units : 0;
+
+        /* extract major/minor from target_graphics_version (hex gfx ID, e.g. 0x950) */
+        uint64_t v = asic.target_graphics_version;
+        if (v != 0 && v != 0xFFFFFFFFFFFFFFFFULL) {
+            obj->major = (int)((v >> 8) & 0xFF);
+            obj->minor = (int)((v >> 4) & 0xF);
+        }
     }
 
-    strcpy(obj->_provider_storage, "HIP");
-    bytes_to_hex(deviceProp.uuid.bytes, obj->_uuid_storage, 16);
-    obj->index = index;
-    memcpy(obj->_name_storage, deviceProp.name, 256);
-    obj->major = deviceProp.major;
-    obj->minor = deviceProp.minor;
-    obj->total_memory = deviceProp.totalGlobalMem;
-    obj->sms_count = deviceProp.multiProcessorCount;
-    obj->sm_threads = deviceProp.maxThreadsPerMultiProcessor;
-    // obj->sm_shared_memory = deviceProp.sharedMemPerMultiprocessor;
-    obj->sm_shared_memory = deviceProp.maxSharedMemoryPerMultiProcessor; // hip specific, seems to make more sense
-    obj->sm_registers = deviceProp.regsPerMultiprocessor;
-    obj->sm_blocks = deviceProp.maxBlocksPerMultiProcessor;
-    obj->block_threads = deviceProp.maxThreadsPerBlock;
-    obj->block_shared_memory = deviceProp.sharedMemPerBlock;
-    obj->block_registers = deviceProp.regsPerBlock;
-    obj->warp_size = deviceProp.warpSize;
-    obj->l2_cache_size = deviceProp.l2CacheSize;
-    obj->concurrent_kernels = (char)deviceProp.concurrentKernels;
-    obj->async_engines_count = deviceProp.asyncEngineCount;
-    obj->cooperative = (char)deviceProp.cooperativeLaunch;
+    /* UUID */
+    char uuid_buf[256] = {0};
+    unsigned int uuid_len = sizeof(uuid_buf);
+    if (smi_uuid_fn(handle, &uuid_len, uuid_buf) == AMDSMI_STATUS_SUCCESS) {
+        /* AMD SMI returns a string UUID; strip any prefix/dashes into 32 hex chars */
+        const char* src = uuid_buf;
+        int out_idx = 0;
+        for (int i = 0; src[i] != '\0' && out_idx < 32; i++) {
+            if (src[i] != '-' && src[i] != ' ')
+                obj->_uuid_storage[out_idx++] = src[i];
+        }
+    }
 
-    if (obj->_name_storage[0] == '\0') {
-        const char prefix[] = "nameless-device";
-        const size_t prefix_len = sizeof(prefix) - 1;
+    /* total memory in bytes */
+    uint64_t mem_total = 0;
+    if (smi_mem_total_fn(handle, AMDSMI_MEM_TYPE_VRAM, &mem_total) == AMDSMI_STATUS_SUCCESS)
+        obj->total_memory = (size_t)mem_total;
 
-        memcpy(obj->_name_storage, prefix, prefix_len);
-        if (deviceProp.gcnArchName[0] != '\0') {
-            size_t len = 0;
-            for (size_t i=0; i<100; ++i) {
-                if (deviceProp.gcnArchName[i] == '\0')
-                    break;
-                if (deviceProp.gcnArchName[i] == ':') {
-                    len = i;
+    /* L2 cache */
+    obj->l2_cache_size = 0;
+    if (smi_cache_fn) {
+        amdsmi_gpu_cache_info_t cache_info = {0};
+        if (smi_cache_fn(handle, &cache_info) == AMDSMI_STATUS_SUCCESS) {
+            for (uint32_t i = 0; i < cache_info.num_cache_types && i < AMDSMI_MAX_CACHE_TYPES; i++) {
+                if (cache_info.cache[i].cache_level == 2) {
+                    obj->l2_cache_size = (int)cache_info.cache[i].cache_size * 1024; /* KB → bytes */
                     break;
                 }
             }
+        }
+    }
 
-            if (len) {
-                obj->_name_storage[prefix_len] = ':';
-                memcpy(obj->_name_storage + prefix_len + 1, deviceProp.gcnArchName, len);
-                obj->_name_storage[prefix_len + len + 1] = '\0';
-            } else {
-                obj->_name_storage[prefix_len] = '\0';
+    strcpy(obj->_provider_storage, "HIP");
+    obj->index = index;
+
+    /* defaults for fields that may be populated by HSA below */
+    obj->sm_threads = 0;
+    obj->sm_shared_memory = 0;        /* not available without HIP runtime */
+    obj->sm_registers = 0;            /* not available without HIP runtime */
+    obj->sm_blocks = 0;               /* not available without HIP runtime */
+    obj->block_threads = 0;
+    obj->block_shared_memory = 0;     /* not available without HIP runtime */
+    obj->block_registers = 0;         /* not available without HIP runtime */
+    obj->warp_size = 64;              /* AMD wavefront size is always 64 */
+    obj->concurrent_kernels = 1;      /* always true for GCN+ */
+    obj->async_engines_count = 0;
+    obj->cooperative = 0;
+
+    /* backfill from HSA runtime if available, matched by KFD node ID */
+    if (smi_kfd_fn) {
+        amdsmi_kfd_info_t kfd = {0};
+        if (smi_kfd_fn(handle, &kfd) == AMDSMI_STATUS_SUCCESS
+            && kfd.node_id != 0xFFFFFFFF) {
+            const HsaGpuInfo* hsa = find_hsa_gpu(kfd.node_id);
+            if (hsa) {
+                obj->warp_size = (int)hsa->wavefront_size;
+                obj->block_threads = (int)hsa->workgroup_max_size;
+                obj->sm_threads = (int)(hsa->max_waves_per_cu * hsa->wavefront_size);
+                obj->async_engines_count = (int)hsa->num_sdma_eng;
+                obj->cooperative = hsa->cooperative;
             }
         }
     }
@@ -450,12 +435,90 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
 }
 
 
-void amdCleanup() {
-    if (hip_runtime_dl) {
-        dlclose(hip_runtime_dl);
+/* ── runtime info ────────────────────────────────────────────────────── */
+
+int amdsmiGetRuntimeUtilisation(int index, int* gpu_util) {
+    if (try_load_amdsmi() != 0 || index < 0 || index >= gpu_count) return -1;
+    if (!smi_activity_fn) return -1;
+
+    amdsmi_engine_usage_t usage = {0};
+    if (smi_activity_fn(gpu_handles[index], &usage) != AMDSMI_STATUS_SUCCESS) return -1;
+    *gpu_util = (int)usage.gfx_activity;
+    return 0;
+}
+
+
+int amdsmiGetRuntimeMemory(int index, unsigned long long* used_bytes) {
+    if (try_load_amdsmi() != 0 || index < 0 || index >= gpu_count) return -1;
+    if (!smi_mem_usage_fn) return -1;
+
+    uint64_t used = 0;
+    if (smi_mem_usage_fn(gpu_handles[index], AMDSMI_MEM_TYPE_VRAM, &used) != AMDSMI_STATUS_SUCCESS) return -1;
+    *used_bytes = used;
+    return 0;
+}
+
+
+int amdsmiGetRuntimePids(int index, int* pids, int* count, int max_count) {
+    *count = 0;
+    if (try_load_amdsmi() != 0 || index < 0 || index >= gpu_count) return -1;
+    if (!smi_proc_list_fn) return -1;
+
+    /* two-call pattern: get count first */
+    uint32_t num_procs = 0;
+    smi_proc_list_fn(gpu_handles[index], &num_procs, NULL);
+    if (num_procs == 0) return 0;
+
+    if (num_procs > AMDSMI_MAX_PROCS) num_procs = AMDSMI_MAX_PROCS;
+    amdsmi_proc_info_t* infos = (amdsmi_proc_info_t*)calloc(num_procs, sizeof(amdsmi_proc_info_t));
+    if (!infos) return -1;
+
+    if (smi_proc_list_fn(gpu_handles[index], &num_procs, infos) != AMDSMI_STATUS_SUCCESS) {
+        free(infos);
+        return -1;
     }
 
-    hip_runtime_dl = NULL;
-    device_count_fn = NULL;
-    device_props_fn = NULL;
+    int n = 0;
+    for (uint32_t i = 0; i < num_procs && n < max_count; i++) {
+        pids[n++] = (int)infos[i].pid;
+    }
+    *count = n;
+    free(infos);
+    return 0;
+}
+
+
+int amdsmiGetGfxVersion(int index, char* gfx, int max_len) {
+    if (try_load_amdsmi() != 0 || index < 0 || index >= gpu_count) return -1;
+
+    amdsmi_asic_info_t asic = {0};
+    if (smi_asic_fn(gpu_handles[index], &asic) != AMDSMI_STATUS_SUCCESS) return -1;
+
+    if (asic.target_graphics_version == 0xFFFFFFFFFFFFFFFFULL) return -1;
+
+    snprintf(gfx, max_len, "%x", (unsigned)asic.target_graphics_version);
+    return 0;
+}
+
+
+int amdsmiGetDrmRender(int index, int* drm_render) {
+    if (try_load_amdsmi() != 0 || index < 0 || index >= gpu_count) return -1;
+    if (!smi_enum_fn) return -1;
+
+    amdsmi_enumeration_info_t info = {0};
+    if (smi_enum_fn(gpu_handles[index], &info) != AMDSMI_STATUS_SUCCESS) return -1;
+    *drm_render = (int)info.drm_render;
+    return 0;
+}
+
+
+int amdsmiGetNodeId(int index, int* node_id) {
+    if (try_load_amdsmi() != 0 || index < 0 || index >= gpu_count) return -1;
+    if (!smi_kfd_fn) return -1;
+
+    amdsmi_kfd_info_t info = {0};
+    if (smi_kfd_fn(gpu_handles[index], &info) != AMDSMI_STATUS_SUCCESS) return -1;
+    if (info.node_id == 0xFFFFFFFF) return -1;
+    *node_id = (int)info.node_id;
+    return 0;
 }

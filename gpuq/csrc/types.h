@@ -14,15 +14,6 @@
 #endif
 
 
-#define MAX_HINTS 32
-#define MAX_HINT_LEN 127
-#define HIN_OVEARHEAD 32
-
-extern char _hints[MAX_HINTS][MAX_HINT_LEN + HIN_OVEARHEAD + 1];
-extern int _hints_len[MAX_HINTS];
-extern int _num_hints;
-
-
 typedef struct {
     PyObject_HEAD
     int ord;
@@ -49,24 +40,33 @@ typedef struct {
 
     char _provider_storage[8];
     char _name_storage[256];
-    char _uuid_storage[32];
+    char _uuid_storage[33];
 } GpuProp;
 
 
 int checkCuda();
 const char* cudaGetDlError();
-const char* cudaGetErrStr(int status);
 int cudaGetDeviceCount(int* count);
 int cudaGetDeviceProps(int index, GpuProp* obj);
-void cudaClean();
+
+/* NVML runtime info (utilisation, memory, PIDs) */
+int nvmlGetRuntimeUtilisation(int index, int* gpu_util);
+int nvmlGetRuntimeMemory(int index, unsigned long long* used_bytes);
+int nvmlGetRuntimePids(int index, int* pids, int* count, int max_count);
 
 
 int checkAmd();
 const char* amdGetDlError();
-const char* amdGetErrStr(int status);
 int amdGetDeviceCount(int* count);
 int amdGetDeviceProps(int index, GpuProp* obj);
-void amdClean();
+
+/* AMD SMI runtime info (utilisation, memory, PIDs, gfx, drm, node) */
+int amdsmiGetRuntimeUtilisation(int index, int* gpu_util);
+int amdsmiGetRuntimeMemory(int index, unsigned long long* used_bytes);
+int amdsmiGetRuntimePids(int index, int* pids, int* count, int max_count);
+int amdsmiGetGfxVersion(int index, char* gfx, int max_len);
+int amdsmiGetDrmRender(int index, int* drm_render);
+int amdsmiGetNodeId(int index, int* node_id);
 
 
 // utils

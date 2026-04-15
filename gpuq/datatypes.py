@@ -66,11 +66,6 @@ class Properties:
         """System-wide index of the GPU, i.e., its index when ignoring *_VISIBLE_DEVICES.
 
         This index is provider-specific.
-
-        > **Note:** system-wide index is determined by temporarily removing *_VISIBLE_DEVICES
-        > variables.
-        > This might cause race conditions if the variables are also used/modified by other
-        > parts of the system at the same time. Please keep this in mind when using the package.
         """
         return self.cobj.index  # type: ignore[no-any-return]
 
@@ -81,11 +76,6 @@ class Properties:
 
         > **Note:** visibility is determined at the moment of constructing the object and will not
         > reflect any changes made later.
-
-        > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-        > when obtaining information about the GPU, to correctly report other properties.
-        > This might cause race conditions if the variables are also used/modified by other
-        > parts of the system at the same time. Please keep this in mind when using the package.
         """
         return self.index is not None
 
@@ -229,8 +219,8 @@ class Properties:
         """
         if not isinstance(other, Properties):
             return False
-        if self.impl is other.impl and self.index == other.index:
-            return True
+        if self.impl is other.impl:
+            return self.ord == other.ord
         return self.asdict(strip_index=True) == other.asdict(strip_index=True)
 
     def __str__(self) -> str:
@@ -257,13 +247,13 @@ class Properties:
     def __setstate__(self, state: dict[str, Any]) -> None:
         ord = state.pop("_ord")
         self.__dict__.update(state)
-        with self.impl.save_visible(clear=True):
-            try:
-                self.cobj = self.impl.c_get(ord)
-            except Exception as exp:
-                raise RuntimeError(
-                    f"Failed to unpickle GPU properties object with global ID {ord}"
-                ) from exp
+        self.impl.parse_visible()
+        try:
+            self.cobj = self.impl.c_get(ord)
+        except Exception as exp:
+            raise RuntimeError(
+                f"Failed to unpickle GPU properties object with global ID {ord}"
+            ) from exp
 
 
 class MockCObj:
@@ -310,6 +300,7 @@ class MockCObj:
         self.minor = minor
         self.total_memory = total_memory
         self.sms_count = sms_count
+        self.l2_cache_size = l2_cache_size
         self.sm_threads = sm_threads
         self.sm_shared_memory = sm_shared_memory
         self.sm_registers = sm_registers
@@ -318,7 +309,6 @@ class MockCObj:
         self.block_shared_memory = block_shared_memory
         self.block_registers = block_registers
         self.warp_size = warp_size
-        self.l2_cache_size = l2_cache_size
         self.concurrent_kernels = concurrent_kernels
         self.async_engines_count = async_engines_count
         self.cooperative = cooperative

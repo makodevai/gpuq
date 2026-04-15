@@ -26,17 +26,34 @@ The primary functionality offered is:
  - query properties for each available device - will tell you some basic info about the provider (CUDA/HIP) and other info similar to `cudaGetDeviceProperties`
     - the returned list is not comprehensive, though
  - respects `*_VISIBLE_DEVICES` and provides mapping between local (visible) and global indices
-    - **NOTE: this temporarily modifies env variables and therefore is not thread-safe**
  - if requested, lazily provides some runtime information about each GPU as well
     - in particular, PIDs of processes using the GPU will be returned
-    - NOTE: this is currently done rather naively by parsing outputs of tools like `nvidia-smi` or `rocm-smi`
  - allows to check for runtime errors that might have occurred while trying to load 
 
 ### How it works:
 
-The implementation will attempt to dynamically lazy-load `libcudart.so` and `libamdhip64.so` at runtime.
+The implementation will attempt to dynamically lazy-load `libnvidia-ml.so` (NVML) and `libamd_smi.so` (AMD SMI) at runtime.
 For GPUs to be properly reported, the libraries have to be found by the dynamic linker at the moment any relevant function call is made for the first time.
 (If a library fails to load, loading will be retried every time a function call is made).
+
+For NVIDIA GPUs, the CUDA Driver API (`libcuda.so`) is optionally loaded to query detailed SM/block-level properties.
+For AMD GPUs, the HSA Runtime (`libhsa-runtime64.so`) is optionally loaded for the same purpose.
+If these optional libraries are not available, basic properties (name, UUID, memory, compute capability) will still be reported, but some detailed properties will be reported as 0.
+
+### AMD property support
+
+Some device properties are not available through AMD SMI or HSA and will be reported as 0:
+
+| Property | Supported |
+|---|---|
+| name, uuid, total_memory, major/minor | yes (AMD SMI) |
+| sms_count, l2_cache_size | yes (AMD SMI) |
+| warp_size, block_threads, sm_threads | yes (HSA, if available) |
+| cooperative, async_engines_count, concurrent_kernels | yes (HSA, if available) |
+| sm_shared_memory, block_shared_memory | no (always 0) |
+| sm_registers, block_registers | no (always 0) |
+| sm_blocks | no (always 0) |
+| utilisation, used_memory, pids | yes (AMD SMI) |
 
 ## Examples
 
