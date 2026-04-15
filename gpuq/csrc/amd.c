@@ -1,6 +1,6 @@
-/* AMD GPU support via AMD SMI.
-   Type definitions below are copied from AMD SMI headers (ROCm 7.2.0) to
-   avoid a build-time dependency on the ROCm SDK.  May need updating if
+/* AMD GPU support via AMD SMI + HSA Runtime.
+   Type definitions below are copied from AMD SMI / HSA headers (ROCm 7.2.0)
+   to avoid a build-time dependency on the ROCm SDK.  May need updating if
    AMD changes struct layouts in a future ROCm release. */
 
 #include <stddef.h>
@@ -117,6 +117,113 @@ typedef amdsmi_status_t (*amdsmi_get_gpu_enumeration_info_t)(amdsmi_processor_ha
 typedef amdsmi_status_t (*amdsmi_get_gpu_kfd_info_t)(amdsmi_processor_handle, amdsmi_kfd_info_t*);
 
 
+/* ── HSA Runtime types (hsa.h + hsa_ext_amd.h, ROCm 7.2.0) ──────────── */
+
+typedef uint32_t hsa_status_t;
+typedef struct { uint64_t handle; } hsa_agent_t;
+
+#define HSA_STATUS_SUCCESS              0
+
+/* hsa_agent_get_info attribute IDs (core) */
+#define HSA_AGENT_INFO_WAVEFRONT_SIZE       6   /* uint32_t */
+#define HSA_AGENT_INFO_WORKGROUP_MAX_SIZE   8   /* uint32_t */
+#define HSA_AGENT_INFO_DEVICE               17  /* uint32_t, 1 = GPU */
+
+/* hsa_agent_get_info attribute IDs (AMD vendor extensions) */
+#define HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT   0xA002  /* uint32_t */
+#define HSA_AMD_AGENT_INFO_DRIVER_NODE_ID       0xA004  /* uint32_t */
+#define HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU     0xA00A  /* uint32_t */
+#define HSA_AMD_AGENT_INFO_COOPERATIVE_QUEUES   0xA010  /* bool */
+#define HSA_AMD_AGENT_INFO_NUM_SDMA_ENG         0xA10A  /* uint32_t */
+
+typedef hsa_status_t (*hsa_init_t)(void);
+typedef hsa_status_t (*hsa_shut_down_t)(void);
+typedef hsa_status_t (*hsa_agent_get_info_t)(hsa_agent_t, uint32_t, void*);
+typedef hsa_status_t (*hsa_iterate_agents_t)(
+    hsa_status_t (*callback)(hsa_agent_t, void*), void*);
+
+/* Per-GPU data extracted from HSA, keyed by KFD driver_node_id */
+typedef struct {
+    uint32_t driver_node_id;
+    uint32_t wavefront_size;
+    uint32_t workgroup_max_size;
+    uint32_t max_waves_per_cu;
+    uint32_t num_sdma_eng;
+    char     cooperative;
+} HsaGpuInfo;
+
+#define HSA_MAX_GPUS 32
+
+static void*                   hsa_dl          = NULL;
+static hsa_agent_get_info_t    hsa_info_fn     = NULL;
+static HsaGpuInfo              hsa_gpus[HSA_MAX_GPUS];
+static int                     hsa_gpu_count   = 0;
+
+
+static hsa_status_t hsa_agent_cb(hsa_agent_t agent, void* data) {
+    (void)data;
+    uint32_t dev_type = 0;
+    if (hsa_info_fn(agent, HSA_AGENT_INFO_DEVICE, &dev_type) != HSA_STATUS_SUCCESS)
+        return HSA_STATUS_SUCCESS;
+    if (dev_type != 1)  /* not a GPU */
+        return HSA_STATUS_SUCCESS;
+    if (hsa_gpu_count >= HSA_MAX_GPUS)
+        return HSA_STATUS_SUCCESS;
+
+    HsaGpuInfo* g = &hsa_gpus[hsa_gpu_count];
+    memset(g, 0, sizeof(*g));
+
+    hsa_info_fn(agent, HSA_AMD_AGENT_INFO_DRIVER_NODE_ID,   &g->driver_node_id);
+    hsa_info_fn(agent, HSA_AGENT_INFO_WAVEFRONT_SIZE,       &g->wavefront_size);
+    hsa_info_fn(agent, HSA_AGENT_INFO_WORKGROUP_MAX_SIZE,   &g->workgroup_max_size);
+    hsa_info_fn(agent, HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU, &g->max_waves_per_cu);
+    hsa_info_fn(agent, HSA_AMD_AGENT_INFO_NUM_SDMA_ENG,     &g->num_sdma_eng);
+
+    uint32_t coop = 0;
+    if (hsa_info_fn(agent, HSA_AMD_AGENT_INFO_COOPERATIVE_QUEUES, &coop) == HSA_STATUS_SUCCESS)
+        g->cooperative = (char)(coop != 0);
+
+    hsa_gpu_count++;
+    return HSA_STATUS_SUCCESS;
+}
+
+
+static void try_load_hsa() {
+    if (hsa_dl) return;
+
+    hsa_dl = dlopen("libhsa-runtime64.so", RTLD_NOW | RTLD_LOCAL);
+    if (!hsa_dl)
+        hsa_dl = dlopen("/opt/rocm/lib/libhsa-runtime64.so", RTLD_NOW | RTLD_LOCAL);
+    if (!hsa_dl) return;
+
+    hsa_init_t init_fn = (hsa_init_t)dlsym(hsa_dl, "hsa_init");
+    hsa_iterate_agents_t iter_fn = (hsa_iterate_agents_t)dlsym(hsa_dl, "hsa_iterate_agents");
+    hsa_info_fn = (hsa_agent_get_info_t)dlsym(hsa_dl, "hsa_agent_get_info");
+
+    if (!init_fn || !iter_fn || !hsa_info_fn) {
+        dlclose(hsa_dl); hsa_dl = NULL; hsa_info_fn = NULL; return;
+    }
+
+    if (init_fn() != HSA_STATUS_SUCCESS) {
+        dlclose(hsa_dl); hsa_dl = NULL; hsa_info_fn = NULL; return;
+    }
+
+    hsa_gpu_count = 0;
+    iter_fn(hsa_agent_cb, NULL);
+}
+
+
+static const HsaGpuInfo* find_hsa_gpu(uint32_t node_id) {
+    for (int i = 0; i < hsa_gpu_count; i++) {
+        if (hsa_gpus[i].driver_node_id == node_id)
+            return &hsa_gpus[i];
+    }
+    return NULL;
+}
+
+
+/* ── AMD SMI + HSA state ─────────────────────────────────────────────── */
+
 static const char* dl_error_buffer = NULL;
 static size_t dl_error_len = 0;
 
@@ -216,6 +323,8 @@ done:
         dl_error_buffer = NULL;
         dl_error_len = 0;
     }
+
+    try_load_hsa();  /* optional, soft-fail */
     return 0;
 }
 
@@ -293,18 +402,34 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     strcpy(obj->_provider_storage, "HIP");
     obj->index = index;
 
-    /* fields not available from AMD SMI */
+    /* defaults for fields that may be populated by HSA below */
     obj->sm_threads = 0;
-    obj->sm_shared_memory = 0;
-    obj->sm_registers = 0;
-    obj->sm_blocks = 0;
+    obj->sm_shared_memory = 0;        /* not available without HIP runtime */
+    obj->sm_registers = 0;            /* not available without HIP runtime */
+    obj->sm_blocks = 0;               /* not available without HIP runtime */
     obj->block_threads = 0;
-    obj->block_shared_memory = 0;
-    obj->block_registers = 0;
-    obj->warp_size = 64;  /* AMD wavefront size is always 64 */
-    obj->concurrent_kernels = 0;
+    obj->block_shared_memory = 0;     /* not available without HIP runtime */
+    obj->block_registers = 0;         /* not available without HIP runtime */
+    obj->warp_size = 64;              /* AMD wavefront size is always 64 */
+    obj->concurrent_kernels = 1;      /* always true for GCN+ */
     obj->async_engines_count = 0;
     obj->cooperative = 0;
+
+    /* backfill from HSA runtime if available, matched by KFD node ID */
+    if (smi_kfd_fn) {
+        amdsmi_kfd_info_t kfd = {0};
+        if (smi_kfd_fn(handle, &kfd) == AMDSMI_STATUS_SUCCESS
+            && kfd.node_id != 0xFFFFFFFF) {
+            const HsaGpuInfo* hsa = find_hsa_gpu(kfd.node_id);
+            if (hsa) {
+                obj->warp_size = (int)hsa->wavefront_size;
+                obj->block_threads = (int)hsa->workgroup_max_size;
+                obj->sm_threads = (int)(hsa->max_waves_per_cu * hsa->wavefront_size);
+                obj->async_engines_count = (int)hsa->num_sdma_eng;
+                obj->cooperative = hsa->cooperative;
+            }
+        }
+    }
 
     return 0;
 }
