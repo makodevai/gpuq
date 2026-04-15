@@ -187,7 +187,7 @@ def test_cuda_runtime() -> None:
         cuda_count=1,
         hip_count=None,
         cuda_utilisation=11,
-        cuda_used_memory=1552,
+        cuda_memory=1552,
         cuda_pids=[1, 1024],
     ):
         gpu = G.get(0)

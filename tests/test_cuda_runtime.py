@@ -14,7 +14,7 @@ def test_cuda_runtime_info_mock() -> None:
 
 def test_cuda_runtime_info_via_mock_impl() -> None:
     impl = gpuq.mock(
-        cuda_count=2, cuda_utilisation=55, cuda_used_memory=512, cuda_pids=[1, 2]
+        cuda_count=2, cuda_utilisation=55, cuda_memory=512, cuda_pids=[1, 2]
     )
     with impl:
         g = gpuq.get(0, visible_only=False)
