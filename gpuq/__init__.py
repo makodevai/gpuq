@@ -91,9 +91,6 @@ def query(
     for providers and GPUs as described above) will only consider GPUs that are visible
     according to the relevant *_VISIBLE_DEVICES environmental variable. Otherwise
     the variables are ignored and all GPUs are always considered.
-
-    > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
-    > so the implementation does not need to modify environment variables.
     """
     nonempty = False
     if required is True:
