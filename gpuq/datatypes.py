@@ -66,9 +66,6 @@ class Properties:
         """System-wide index of the GPU, i.e., its index when ignoring *_VISIBLE_DEVICES.
 
         This index is provider-specific.
-
-        > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
-        > so the implementation does not need to modify environment variables.
         """
         return self.cobj.index  # type: ignore[no-any-return]
 
@@ -79,9 +76,6 @@ class Properties:
 
         > **Note:** visibility is determined at the moment of constructing the object and will not
         > reflect any changes made later.
-
-        > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
-        > so the implementation does not need to modify environment variables.
         """
         return self.index is not None
 
@@ -198,13 +192,13 @@ class Properties:
     def __setstate__(self, state: dict[str, Any]) -> None:
         ord = state.pop("_ord")
         self.__dict__.update(state)
-        with self.impl.save_visible(clear=True):
-            try:
-                self.cobj = self.impl.c_get(ord)
-            except Exception as exp:
-                raise RuntimeError(
-                    f"Failed to unpickle GPU properties object with global ID {ord}"
-                ) from exp
+        self.impl.parse_visible()
+        try:
+            self.cobj = self.impl.c_get(ord)
+        except Exception as exp:
+            raise RuntimeError(
+                f"Failed to unpickle GPU properties object with global ID {ord}"
+            ) from exp
 
 
 class MockCObj:

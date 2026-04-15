@@ -1,8 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Any, ContextManager, Generator, Literal
-from contextlib import contextmanager
+from typing import Any, ContextManager, Literal
 
 from . import C
 from .datatypes import Provider, MockCObj, Properties
@@ -35,7 +34,7 @@ class Implementation(ABC):
     def provider_check(self, provider: Provider) -> str: ...
 
     @abstractmethod
-    def save_visible(self, clear: bool = True) -> ContextManager[Visible]: ...
+    def parse_visible(self) -> Visible: ...
 
     @abstractmethod
     def c_count(self) -> int: ...
@@ -145,8 +144,7 @@ class GenuineImplementation(Implementation):
 
         raise ValueError(f"Invalid provider: {provider}")
 
-    @contextmanager
-    def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
+    def parse_visible(self) -> Visible:
         cuda = os.environ.get("CUDA_VISIBLE_DEVICES", None)
         hip = os.environ.get("HIP_VISIBLE_DEVICES", None)
 
@@ -163,7 +161,7 @@ class GenuineImplementation(Implementation):
             parsed_hip = sorted(list(parsed_hip))  # type: ignore[arg-type]
         else:
             parsed_hip = parsed_cuda
-        yield {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
+        return {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
 
     def c_count(self) -> int:
         return int(C.count())
@@ -274,53 +272,13 @@ class MockImplementation(Implementation):
 
         raise ValueError(f"Invalid provider: {provider}")
 
-    @contextmanager
-    def save_visible(self, clear: bool = True) -> Generator[Visible, None, None]:
+    def parse_visible(self) -> Visible:
         cuda = self.cuda_visible.copy() if self.cuda_visible is not None else None
         hip = self.hip_visible.copy() if self.hip_visible is not None else None
-
-        if clear:
-            self.cuda_visible = None
-            self.hip_visible = None
-
-        try:
-            yield {Provider.CUDA: cuda, Provider.HIP: hip if hip is not None else cuda}
-        finally:
-            if clear:
-                self.cuda_visible = cuda
-                self.hip_visible = hip
-
-    def _count_hip(self) -> int:
-        if not self.hip_count:
-            return 0
-        if self.hip_visible is not None:
-            count = sum(
-                1 for idx in self.hip_visible if idx >= 0 and idx < self.hip_count
-            )
-        elif self.cuda_visible is not None:
-            count = sum(
-                1 for idx in self.cuda_visible if idx >= 0 and idx < self.hip_count
-            )
-        else:
-            count = self.hip_count
-
-        return count
-
-    def _count_cuda(self) -> int:
-        if not self.cuda_count:
-            return 0
-        if self.cuda_visible is not None:
-            count = sum(
-                1 for idx in self.cuda_visible if idx >= 0 and idx < self.cuda_count
-            )
-        else:
-            count = self.cuda_count
-        return count
+        return {Provider.CUDA: cuda, Provider.HIP: hip if hip is not None else cuda}
 
     def c_count(self) -> int:
-        cuda_count = self._count_cuda()
-        hip_count = self._count_hip()
-        return cuda_count + hip_count
+        return self.overall_count
 
     def c_get(self, ord: int) -> Any:
         if ord < 0 or ord >= self.overall_count:

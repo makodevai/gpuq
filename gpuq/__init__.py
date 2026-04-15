@@ -111,41 +111,41 @@ def query(
                         f"Provider {p.name} is required but the relevant runtime is missing from the system or failed to load, error: {err}!"
                     )
 
-    with impl.save_visible() as visible:
-        num = impl.c_count()
+    visible = impl.parse_visible()
+    num = impl.c_count()
 
-        if not num:
-            if required is not None or nonempty:
-                raise RuntimeError("No GPUs detected")
-            return []
+    if not num:
+        if required is not None or nonempty:
+            raise RuntimeError("No GPUs detected")
+        return []
 
-        ret = []
+    ret = []
 
-        for idx in range(num):
-            dev = impl.c_get(idx)
-            prov = Provider[dev.provider]
+    for idx in range(num):
+        dev = impl.c_get(idx)
+        prov = Provider[dev.provider]
 
-            visible_set = visible.get(prov)
-            local_index = _global_to_visible(dev.index, visible_set)
-            if visible_only and local_index is None:  # not visible
-                continue
+        visible_set = visible.get(prov)
+        local_index = _global_to_visible(dev.index, visible_set)
+        if visible_only and local_index is None:  # not visible
+            continue
 
-            if required is not None and prov & required:
-                required &= ~prov  # mark the current provider as no longer required
+        if required is not None and prov & required:
+            required &= ~prov  # mark the current provider as no longer required
 
-            if provider & prov:
-                ret.append(Properties(dev, local_index, impl))
+        if provider & prov:
+            ret.append(Properties(dev, local_index, impl))
 
-        if required:
-            missing = [p for p in Provider if p & required]
-            raise RuntimeError(
-                f"GPUs of the following required providers could not be found: {missing}"
-            )
+    if required:
+        missing = [p for p in Provider if p & required]
+        raise RuntimeError(
+            f"GPUs of the following required providers could not be found: {missing}"
+        )
 
-        if not ret and nonempty:
-            raise RuntimeError("No suitable GPUs detected")
+    if not ret and nonempty:
+        raise RuntimeError("No suitable GPUs detected")
 
-        return ret
+    return ret
 
 
 def count(
@@ -167,18 +167,18 @@ def count(
         impl = _get_impl()
 
     if provider == Provider.all():
-        with impl.save_visible() as visible:
-            total = impl.c_count()
-            if not visible_only:
-                return total
-            visible_count = 0
-            for idx in range(total):
-                dev = impl.c_get(idx)
-                prov = Provider[dev.provider]
-                visible_set = visible.get(prov)
-                if _global_to_visible(dev.index, visible_set) is not None:
-                    visible_count += 1
-            return visible_count
+        visible = impl.parse_visible()
+        total = impl.c_count()
+        if not visible_only:
+            return total
+        visible_count = 0
+        for idx in range(total):
+            dev = impl.c_get(idx)
+            prov = Provider[dev.provider]
+            visible_set = visible.get(prov)
+            if _global_to_visible(dev.index, visible_set) is not None:
+                visible_count += 1
+        return visible_count
     else:
         return len(
             query(
@@ -204,12 +204,12 @@ def get(
         impl = _get_impl()
 
     if provider == Provider.all() and not visible_only:
-        with impl.save_visible() as visible:
-            cobj = impl.c_get(idx)
-            prov = Provider[cobj.provider]
-            visible_set = visible.get(prov)
-            local_index = _global_to_visible(cobj.index, visible_set)
-            return Properties(cobj, local_index, impl)
+        visible = impl.parse_visible()
+        cobj = impl.c_get(idx)
+        prov = Provider[cobj.provider]
+        visible_set = visible.get(prov)
+        local_index = _global_to_visible(cobj.index, visible_set)
+        return Properties(cobj, local_index, impl)
     else:
         ret: list[Properties] = query(
             provider=provider, required=None, visible_only=visible_only, impl=impl
