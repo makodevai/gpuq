@@ -26,15 +26,13 @@ The primary functionality offered is:
  - query properties for each available device - will tell you some basic info about the provider (CUDA/HIP) and other info similar to `cudaGetDeviceProperties`
     - the returned list is not comprehensive, though
  - respects `*_VISIBLE_DEVICES` and provides mapping between local (visible) and global indices
-    - **NOTE: this temporarily modifies env variables and therefore is not thread-safe**
  - if requested, lazily provides some runtime information about each GPU as well
     - in particular, PIDs of processes using the GPU will be returned
-    - NOTE: this is currently done rather naively by parsing outputs of tools like `nvidia-smi` or `rocm-smi`
  - allows to check for runtime errors that might have occurred while trying to load 
 
 ### How it works:
 
-The implementation will attempt to dynamically lazy-load `libcudart.so` and `libamdhip64.so` at runtime.
+The implementation will attempt to dynamically lazy-load `libnvidia-ml.so` (NVML) and `libamd_smi.so` (AMD SMI) at runtime.
 For GPUs to be properly reported, the libraries have to be found by the dynamic linker at the moment any relevant function call is made for the first time.
 (If a library fails to load, loading will be retried every time a function call is made).
 
