@@ -35,6 +35,7 @@ void record_dl_error(const char** dl_error_buffer, size_t* dl_error_len, int app
     if (*dl_error_buffer) {
         memcpy(new_buffer, *dl_error_buffer, *dl_error_len);
         new_buffer[*dl_error_len] = '\n';
+        free((void*)(*dl_error_buffer));
         (*dl_error_buffer) = new_buffer;
         new_buffer += (*dl_error_len) + 1;
     } else {

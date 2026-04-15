@@ -147,21 +147,22 @@ int cudaGetDeviceProps(int index, GpuProp* obj) {
     if (get_handle(index, &handle) != 0) return -1;
 
     char name[NVML_DEVICE_NAME_BUFFER_SIZE] = {0};
-    nvml_name_fn(handle, name, sizeof(name));
-    memcpy(obj->_name_storage, name, 256);
+    if (nvml_name_fn(handle, name, sizeof(name)) == NVML_SUCCESS)
+        memcpy(obj->_name_storage, name, 256);
 
     char uuid_str[NVML_DEVICE_UUID_BUFFER_SIZE] = {0};
-    nvml_uuid_fn(handle, uuid_str, sizeof(uuid_str));
-    nvml_uuid_to_hex(uuid_str, obj->_uuid_storage);
+    if (nvml_uuid_fn(handle, uuid_str, sizeof(uuid_str)) == NVML_SUCCESS)
+        nvml_uuid_to_hex(uuid_str, obj->_uuid_storage);
 
     nvmlMemory_t mem = {0, 0, 0};
-    nvml_mem_fn(handle, &mem);
-    obj->total_memory = mem.total;
+    if (nvml_mem_fn(handle, &mem) == NVML_SUCCESS)
+        obj->total_memory = mem.total;
 
     int major = 0, minor = 0;
-    nvml_cc_fn(handle, &major, &minor);
-    obj->major = major;
-    obj->minor = minor;
+    if (nvml_cc_fn(handle, &major, &minor) == NVML_SUCCESS) {
+        obj->major = major;
+        obj->minor = minor;
+    }
 
     strcpy(obj->_provider_storage, "CUDA");
     obj->index = index;

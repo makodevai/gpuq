@@ -65,7 +65,7 @@ def get_hip_info(gpu_idx: int) -> HipRuntimeInfo | None:
     from . import C
 
     try:
-        count = int(C.count())
+        count = int(C._amd_count())
     except RuntimeError:
         return None
 

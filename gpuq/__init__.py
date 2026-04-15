@@ -92,10 +92,8 @@ def query(
     according to the relevant *_VISIBLE_DEVICES environmental variable. Otherwise
     the variables are ignored and all GPUs are always considered.
 
-    > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-    > when obtaining information about GPUs, regardless of ``visible_only`` argument.
-    > This might cause race conditions if the variables are also used/modified by other
-    > parts of the system at the same time. Please keep this in mind when using it.
+    > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
+    > so the implementation does not need to modify environment variables.
     """
     nonempty = False
     if required is True:
@@ -165,10 +163,8 @@ def count(
     *_VISIBLE_DEVICES environment variables. Otherwise the number of all GPUs matching the
     criteria is returned.
 
-    > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-    > when obtaining information about GPUs, if ``visible_only`` is False.
-    > This might cause race conditions if the variables are also used/modified by other
-    > parts of the system at the same time. Please keep this in mind when using it.
+    > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
+    > so the implementation does not need to modify environment variables.
     """
     if provider == Provider.any() or provider is None:
         provider = Provider.all()
@@ -207,10 +203,8 @@ def get(
     If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
     environment variables are considered for indexing (see ``count``).
 
-    > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-    > when obtaining information about GPUs, regardless of ``visible_only`` argument.
-    > This might cause race conditions if the variables are also used/modified by other
-    > parts of the system at the same time. Please keep this in mind when using it.
+    > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
+    > so the implementation does not need to modify environment variables.
     """
     if provider == Provider.any() or provider is None:
         provider = Provider.all()
@@ -299,12 +293,12 @@ def mock(
     # cuda runtime args
     cuda_utilisation: int = 0,
     cuda_used_memory: int = 1,
-    cuda_pids: list[int] = [],
+    cuda_pids: list[int] | None = None,
     # hip runtime args
     hip_gfx: str = "942",
     hip_drm: int = 128,
     hip_node_idx: int = 2,
-    hip_pids: list[int] = [],
+    hip_pids: list[int] | None = None,
     hip_utilisation: int = 0,
     hip_used_memory: int = 0,
     _hip_drm_stride: int = 8,

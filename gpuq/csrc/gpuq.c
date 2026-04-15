@@ -106,6 +106,20 @@ gpuq_count(PyObject* self, PyObject* args) {
 
 
 static PyObject*
+gpuq_cuda_count(PyObject* self, PyObject* args) {
+    get_gpu_count();  /* ensure cudaDevices is populated */
+    return PyLong_FromLong(cudaDevices);
+}
+
+
+static PyObject*
+gpuq_amd_count(PyObject* self, PyObject* args) {
+    get_gpu_count();  /* ensure amdDevices is populated */
+    return PyLong_FromLong(amdDevices);
+}
+
+
+static PyObject*
 gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     if (nargs != 1) {
         PyErr_SetString(PyExc_TypeError, "gpuq.C.get takes exactly 1 positional argument only.");
@@ -314,6 +328,8 @@ static PyMethodDef gpuq_methods[] = {
     {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for NVML (NVIDIA)."},
     {"checkamd", gpuq_checkamd, METH_NOARGS, "Return status code for AMD SMI."},
     {"count", gpuq_count, METH_NOARGS, "Return the number of GPUs."},
+    {"_cuda_count", gpuq_cuda_count, METH_NOARGS, "(internal) CUDA device count via NVML."},
+    {"_amd_count", gpuq_amd_count, METH_NOARGS, "(internal) AMD device count via AMD SMI."},
     {"get", (PyCFunction)gpuq_get, METH_FASTCALL, "Return properties of a GPU with a given index."},
     {"_nvml_utilisation", (PyCFunction)gpuq_nvml_utilisation, METH_FASTCALL, "(internal) GPU utilisation % for NVIDIA device at index."},
     {"_nvml_used_memory", (PyCFunction)gpuq_nvml_used_memory, METH_FASTCALL, "(internal) used memory in MiB for NVIDIA device at index."},

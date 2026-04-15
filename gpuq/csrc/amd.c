@@ -332,17 +332,20 @@ int amdsmiGetRuntimePids(int index, int* pids, int* count, int max_count) {
     if (num_procs == 0) return 0;
 
     if (num_procs > AMDSMI_MAX_PROCS) num_procs = AMDSMI_MAX_PROCS;
-    amdsmi_proc_info_t infos[AMDSMI_MAX_PROCS];
-    memset(infos, 0, sizeof(infos));
+    amdsmi_proc_info_t* infos = (amdsmi_proc_info_t*)calloc(num_procs, sizeof(amdsmi_proc_info_t));
+    if (!infos) return -1;
 
-    if (smi_proc_list_fn(gpu_handles[index], &num_procs, infos) != AMDSMI_STATUS_SUCCESS)
+    if (smi_proc_list_fn(gpu_handles[index], &num_procs, infos) != AMDSMI_STATUS_SUCCESS) {
+        free(infos);
         return -1;
+    }
 
     int n = 0;
     for (uint32_t i = 0; i < num_procs && n < max_count; i++) {
         pids[n++] = (int)infos[i].pid;
     }
     *count = n;
+    free(infos);
     return 0;
 }
 

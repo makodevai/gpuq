@@ -67,10 +67,8 @@ class Properties:
 
         This index is provider-specific.
 
-        > **Note:** system-wide index is determined by temporarily removing *_VISIBLE_DEVICES
-        > variables.
-        > This might cause race conditions if the variables are also used/modified by other
-        > parts of the system at the same time. Please keep this in mind when using the package.
+        > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
+        > so the implementation does not need to modify environment variables.
         """
         return self.cobj.index  # type: ignore[no-any-return]
 
@@ -82,10 +80,8 @@ class Properties:
         > **Note:** visibility is determined at the moment of constructing the object and will not
         > reflect any changes made later.
 
-        > **Note:** the implementation will temporarily remove any *_VISIBLE_DEVICES variables
-        > when obtaining information about the GPU, to correctly report other properties.
-        > This might cause race conditions if the variables are also used/modified by other
-        > parts of the system at the same time. Please keep this in mind when using the package.
+        > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
+        > so the implementation does not need to modify environment variables.
         """
         return self.index is not None
 
