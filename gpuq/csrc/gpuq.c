@@ -80,7 +80,7 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
     int count = 0;
     if (cudaGetDeviceCount(&count) || count <= 0)
         return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
-    Py_RETURN_NONE;
+    return PyUnicode_InternFromString("");
 }
 
 
@@ -94,7 +94,7 @@ gpuq_checkamd(PyObject* self, PyObject* args) {
     int count = 0;
     if (amdGetDeviceCount(&count) || count <= 0)
         return PyUnicode_InternFromString("No AMD GPU devices detected (via AMD SMI)");
-    Py_RETURN_NONE;
+    return PyUnicode_InternFromString("");
 }
 
 

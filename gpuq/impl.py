@@ -32,7 +32,7 @@ class Implementation(ABC):
         self._ctx: ContextManager["Implementation"] | None = None
 
     @abstractmethod
-    def provider_check(self, provider: Provider) -> str | None: ...
+    def provider_check(self, provider: Provider) -> str: ...
 
     @abstractmethod
     def save_visible(self, clear: bool = True) -> ContextManager[Visible]: ...
@@ -97,17 +97,17 @@ class Implementation(ABC):
 
         return get(idx=idx, provider=provider, visible_only=visible_only, impl=self)
 
-    def checkprovider(self, p: Provider) -> str | None:
+    def checkprovider(self, p: Provider) -> str:
         from . import checkprovider
 
         return checkprovider(p=p, impl=self)
 
-    def checkcuda(self) -> str | None:
+    def checkcuda(self) -> str:
         from . import checkcuda
 
         return checkcuda(impl=self)
 
-    def checkamd(self) -> str | None:
+    def checkamd(self) -> str:
         from . import checkamd
 
         return checkamd(impl=self)
@@ -137,7 +137,7 @@ class Implementation(ABC):
 
 
 class GenuineImplementation(Implementation):
-    def provider_check(self, provider: Provider) -> str | None:
+    def provider_check(self, provider: Provider) -> str:
         if provider == Provider.CUDA:
             return C.checkcuda()
         if provider == Provider.HIP:
@@ -163,9 +163,6 @@ class GenuineImplementation(Implementation):
             parsed_hip = sorted(list(parsed_hip))  # type: ignore[arg-type]
         else:
             parsed_hip = parsed_cuda
-
-        # No env var manipulation needed — NVML and AMD SMI always see all GPUs
-        # regardless of *_VISIBLE_DEVICES. We only parse the vars for Python-side filtering.
         yield {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
 
     def c_count(self) -> int:
@@ -261,16 +258,16 @@ class MockImplementation(Implementation):
         else:
             self.hip_visible = None
 
-    def provider_check(self, provider: Provider) -> str | None:
+    def provider_check(self, provider: Provider) -> str:
         if provider == Provider.CUDA:
             return (
-                None
+                ""
                 if self.cuda_count is not None
                 else "Mock implementation has not been configured to report CUDA runtime"
             )
         if provider == Provider.HIP:
             return (
-                None
+                ""
                 if self.hip_count is not None
                 else "Mock implementation has not been configured to report HIP runtime"
             )
