@@ -340,8 +340,8 @@ class MockImplementation(Implementation):
             name=self.names[ord],
             provider=provider,
             index=index,
-            **self.cobj_args,
-        )  # type: ignore[arg-type]
+            **self.cobj_args,  # type: ignore[arg-type]
+        )
 
     def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
         if self.cuda_count is None or gpu_index < 0 or gpu_index >= self.cuda_count:

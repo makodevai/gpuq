@@ -57,6 +57,9 @@ def test_hip_runtime_info_drm_stride() -> None:
         g0 = gpuq.get(0, visible_only=False)
         g1 = gpuq.get(1, visible_only=False)
         g2 = gpuq.get(2, visible_only=False)
+        assert g0.hip_info is not None
+        assert g1.hip_info is not None
+        assert g2.hip_info is not None
         assert g0.hip_info.drm == 128
         assert g1.hip_info.drm == 136
         assert g2.hip_info.drm == 144
