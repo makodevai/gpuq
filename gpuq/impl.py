@@ -193,14 +193,14 @@ class MockImplementation(Implementation):
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
         cuda_utilisation: int = 0,
-        cuda_memory: int = 1,
+        cuda_used_memory: int = 1,
         cuda_pids: list[int] = [],
         hip_gfx: str = "942",
         hip_drm: int = 128,
         hip_node_idx: int = 2,
         hip_pids: list[int] = [],
         hip_utilisation: int = 0,
-        hip_memory: int = 0,
+        hip_used_memory: int = 0,
         _hip_drm_stride: int = 8,
     ) -> None:
         if (cuda_count is not None and cuda_count < 0) or (
@@ -232,7 +232,7 @@ class MockImplementation(Implementation):
 
         self.cuda_runtime_args = {
             "utilisation": cuda_utilisation,
-            "used_memory": cuda_memory,
+            "used_memory": cuda_used_memory,
             "pids": cuda_pids,
         }
 
@@ -242,7 +242,7 @@ class MockImplementation(Implementation):
             "node_idx": hip_node_idx,
             "pids": hip_pids,
             "utilisation": hip_utilisation,
-            "used_memory": hip_memory,
+            "used_memory": hip_used_memory,
         }
 
         self._hip_drm_stride = _hip_drm_stride

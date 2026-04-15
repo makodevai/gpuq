@@ -30,7 +30,7 @@ def test_hip_runtime_info_via_mock_impl() -> None:
         hip_node_idx=2,
         hip_pids=[1, 2],
         hip_utilisation=50,
-        hip_memory=2048,
+        hip_used_memory=2048,
     )
     with impl:
         g = gpuq.get(0, visible_only=False)

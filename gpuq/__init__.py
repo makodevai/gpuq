@@ -298,7 +298,7 @@ def mock(
     total_memory: int = 8 * 1024**3,
     # cuda runtime args
     cuda_utilisation: int = 0,
-    cuda_memory: int = 1,
+    cuda_used_memory: int = 1,
     cuda_pids: list[int] = [],
     # hip runtime args
     hip_gfx: str = "942",
@@ -306,7 +306,7 @@ def mock(
     hip_node_idx: int = 2,
     hip_pids: list[int] = [],
     hip_utilisation: int = 0,
-    hip_memory: int = 0,
+    hip_used_memory: int = 0,
     _hip_drm_stride: int = 8,
 ) -> Implementation:
     args = {
