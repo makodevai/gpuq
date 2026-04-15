@@ -222,8 +222,8 @@ class MockCObj:
         major: int = 1,
         minor: int = 2,
         total_memory: int = 8 * 1024**3,
-        sms_count: int = 0,
-        l2_cache_size: int = 0,
+        sms_count: int = 12,
+        l2_cache_size: int = 8 * 1024**2,
     ) -> None:
         name = name.format(provider)
 

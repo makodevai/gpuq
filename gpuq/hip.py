@@ -62,7 +62,7 @@ def get_hip_info(gpu_idx: int) -> HipRuntimeInfo | None:
     from . import C
     try:
         count = int(C.count())
-    except Exception:
+    except RuntimeError:
         return None
 
     if gpu_idx >= count:

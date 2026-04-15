@@ -53,7 +53,7 @@ def get_cuda_info(gpu_idx: int) -> CudaRuntimeInfo | None:
     count = 0
     try:
         count = int(C.count())
-    except Exception:
+    except RuntimeError:
         return None
 
     if gpu_idx >= count:
