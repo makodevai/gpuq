@@ -170,8 +170,8 @@ class Properties:
         """
         if not isinstance(other, Properties):
             return False
-        if self.impl is other.impl and self.index == other.index:
-            return True
+        if self.impl is other.impl:
+            return self.ord == other.ord
         return self.asdict(strip_index=True) == other.asdict(strip_index=True)
 
     def __str__(self) -> str:
