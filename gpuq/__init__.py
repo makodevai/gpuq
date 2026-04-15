@@ -159,9 +159,6 @@ def count(
     if ``visible_only`` is True, return the number of matching GPUs that visible according to
     *_VISIBLE_DEVICES environment variables. Otherwise the number of all GPUs matching the
     criteria is returned.
-
-    > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
-    > so the implementation does not need to modify environment variables.
     """
     if provider == Provider.any() or provider is None:
         provider = Provider.all()
@@ -199,9 +196,6 @@ def get(
     """Return the ``idx``-th GPU from the list of GPus for the specified provider(s).
     If ``visible_only`` is True, only visible devices according to *_VISIBLE_DEVICES
     environment variables are considered for indexing (see ``count``).
-
-    > **Note:** NVML and AMD SMI always see all GPUs regardless of *_VISIBLE_DEVICES,
-    > so the implementation does not need to modify environment variables.
     """
     if provider == Provider.any() or provider is None:
         provider = Provider.all()
