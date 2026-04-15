@@ -4,8 +4,13 @@ from gpuq.hip import HipRuntimeInfoMock
 
 def test_hip_runtime_info_mock() -> None:
     mock = HipRuntimeInfoMock(
-        index=0, gfx="942", drm=128, node_idx=2, pids=[100, 200],
-        utilisation=75, used_memory=4096,
+        index=0,
+        gfx="942",
+        drm=128,
+        node_idx=2,
+        pids=[100, 200],
+        utilisation=75,
+        used_memory=4096,
     )
     assert mock.index == 0
     assert mock.gfx == "942"
@@ -18,9 +23,14 @@ def test_hip_runtime_info_mock() -> None:
 
 def test_hip_runtime_info_via_mock_impl() -> None:
     impl = gpuq.mock(
-        hip_count=2, cuda_count=None,
-        hip_gfx="942", hip_drm=128, hip_node_idx=2,
-        hip_pids=[1, 2], hip_utilisation=50, hip_memory=2048,
+        hip_count=2,
+        cuda_count=None,
+        hip_gfx="942",
+        hip_drm=128,
+        hip_node_idx=2,
+        hip_pids=[1, 2],
+        hip_utilisation=50,
+        hip_memory=2048,
     )
     with impl:
         g = gpuq.get(0, visible_only=False)
@@ -36,8 +46,11 @@ def test_hip_runtime_info_via_mock_impl() -> None:
 
 def test_hip_runtime_info_drm_stride() -> None:
     impl = gpuq.mock(
-        hip_count=3, cuda_count=None,
-        hip_drm=128, hip_node_idx=2, hip_pids=[],
+        hip_count=3,
+        cuda_count=None,
+        hip_drm=128,
+        hip_node_idx=2,
+        hip_pids=[],
         _hip_drm_stride=8,
     )
     with impl:

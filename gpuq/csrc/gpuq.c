@@ -26,11 +26,6 @@
 #endif
 
 
-char _hints[MAX_HINTS][MAX_HINT_LEN + HIN_OVEARHEAD + 1] = {0};
-int _hints_len[MAX_HINTS] = {0};
-int _num_hints = 0;
-
-
 static PyMemberDef GpuPropMembers[] = {
     {"ord", Py_T_INT, offsetof(GpuProp, ord), 0, "GPU ordinal, across all devices and providers, specific to this package"},
     {"uuid", Py_T_STRING, offsetof(GpuProp, uuid), 0, "Device UUID"},
@@ -315,60 +310,6 @@ gpuq_amdsmi_node_id(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
 }
 
 
-static PyObject*
-gpuq__set_location_hints(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
-    if (nargs != 1) {
-        PyErr_SetString(PyExc_TypeError, "gpuq._set_location_hints takes exactly 1 positional argument only.");
-        return NULL;
-    }
-
-    PyObject* arg = args[0];
-    if (!PyList_Check(arg)) {
-        PyErr_SetString(PyExc_TypeError, "gpuq._set_location_hints argument should be a list.");
-        return NULL;
-    }
-
-    int len = PyList_Size(arg);
-    if (len > MAX_HINTS) {
-        PyErr_SetString(PyExc_ValueError, "gpuq._set_location_hints too many hints.");
-        return NULL;
-    }
-
-    for (int i=0; i<len; ++i) {
-        PyObject* el = PyList_GetItem(arg, i);
-        if (!PyBytes_Check(el)) {
-            PyErr_SetString(PyExc_TypeError, "gpuq._set_location_hints list element should be a bytes object.");
-            return NULL;
-        }
-
-        int el_len = PyBytes_Size(el);
-        if (el_len < 0 || el_len > MAX_HINT_LEN) {
-            PyErr_SetString(PyExc_ValueError, "gpuq._set_location_hints list element too long.");
-            return NULL;
-        }
-
-        const char* el_buff = PyBytes_AsString(el);
-        memcpy(_hints[i], el_buff, el_len);
-        _hints_len[i] = el_len;
-    }
-
-    _num_hints = len;
-    Py_RETURN_NONE;
-}
-
-
-static PyObject*
-gpuq__get_max_hints(PyObject* self, PyObject* args) {
-    return PyLong_FromLong(MAX_HINTS);
-}
-
-
-static PyObject*
-gpuq__get_max_hint_len(PyObject* self, PyObject* args) {
-    return PyLong_FromLong(MAX_HINT_LEN);
-}
-
-
 static PyMethodDef gpuq_methods[] = {
     {"checkcuda", gpuq_checkcuda, METH_NOARGS, "Return status code for NVML (NVIDIA)."},
     {"checkamd", gpuq_checkamd, METH_NOARGS, "Return status code for AMD SMI."},
@@ -383,9 +324,6 @@ static PyMethodDef gpuq_methods[] = {
     {"_amdsmi_gfx", (PyCFunction)gpuq_amdsmi_gfx, METH_FASTCALL, "(internal) GFX version string for AMD device at index."},
     {"_amdsmi_drm", (PyCFunction)gpuq_amdsmi_drm, METH_FASTCALL, "(internal) DRM render minor for AMD device at index."},
     {"_amdsmi_node_id", (PyCFunction)gpuq_amdsmi_node_id, METH_FASTCALL, "(internal) KFD node ID for AMD device at index."},
-    {"_set_location_hints", (PyCFunction)gpuq__set_location_hints, METH_FASTCALL, "(internal) set location hints for dlopen."},
-    {"_get_max_hints", gpuq__get_max_hints, METH_NOARGS, "(internal) return the maximum number of hints that can be passed."},
-    {"_get_max_hint_len", gpuq__get_max_hint_len, METH_NOARGS, "(internal) return the maximum length of a single hint."},
     {NULL, NULL, 0, NULL}
 };
 

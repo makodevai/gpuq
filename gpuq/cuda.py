@@ -8,18 +8,21 @@ class CudaRuntimeInfo:
     @property
     def utilisation(self) -> int:
         from . import C
-        return int(C._nvml_utilisation(self.index))  # type: ignore[no-any-return]
+
+        return int(C._nvml_utilisation(self.index))
 
     @property
     def used_memory(self) -> int:
         """Used memory in MiB."""
         from . import C
-        return int(C._nvml_used_memory(self.index))  # type: ignore[no-any-return]
+
+        return int(C._nvml_used_memory(self.index))
 
     @property
     def pids(self) -> list[int]:
         from . import C
-        return C._nvml_pids(self.index)  # type: ignore[no-any-return]
+
+        return C._nvml_pids(self.index)
 
 
 @dataclass
@@ -50,6 +53,7 @@ def get_cuda_info(gpu_idx: int) -> CudaRuntimeInfo | None:
         return None
 
     from . import C
+
     count = 0
     try:
         count = int(C.count())

@@ -1,4 +1,7 @@
-/* AMD GPU support via AMD SMI (replaces former libamdhip64 binding). */
+/* AMD GPU support via AMD SMI.
+   Type definitions below are copied from AMD SMI headers (ROCm 7.2.0) to
+   avoid a build-time dependency on the ROCm SDK.  May need updating if
+   AMD changes struct layouts in a future ROCm release. */
 
 #include <stddef.h>
 #include <string.h>
@@ -7,19 +10,21 @@
 #include "types.h"
 
 
-typedef void*    amdsmi_processor_handle;
-typedef void*    amdsmi_socket_handle;
-typedef uint32_t amdsmi_status_t;
-typedef uint32_t amdsmi_process_handle_t;
+/* Opaque handles */
+typedef void*    amdsmi_processor_handle;  /* per-GPU handle */
+typedef void*    amdsmi_socket_handle;     /* per-socket (physical package) handle */
+typedef uint32_t amdsmi_status_t;         /* return code, 0 = success */
+typedef uint32_t amdsmi_process_handle_t; /* PID type for process queries */
 
 #define AMDSMI_STATUS_SUCCESS       0
-#define AMDSMI_INIT_AMD_GPUS        (1 << 1)
+#define AMDSMI_INIT_AMD_GPUS        (1 << 1)  /* init flag: GPUs only, skip CPUs */
 #define AMDSMI_MAX_STRING_LENGTH    256
 #define AMDSMI_MAX_CACHE_TYPES      10
 #define AMDSMI_MAX_DEVICES          32
 #define AMDSMI_MAX_PROCS            128
-#define AMDSMI_MEM_TYPE_VRAM        0
+#define AMDSMI_MEM_TYPE_VRAM        0          /* memory type selector for VRAM queries */
 
+/* GPU ASIC info — name, compute units, gfx version, etc. */
 typedef struct {
     char     market_name[AMDSMI_MAX_STRING_LENGTH];
     uint32_t vendor_id;
@@ -29,12 +34,13 @@ typedef struct {
     uint32_t rev_id;
     char     asic_serial[AMDSMI_MAX_STRING_LENGTH];
     uint32_t oam_id;
-    uint32_t num_of_compute_units;
-    uint64_t target_graphics_version;
+    uint32_t num_of_compute_units;      /* CU count, 0xFFFFFFFF = unknown */
+    uint64_t target_graphics_version;   /* gfx version as hex, e.g. 0x950 = gfx950 */
     uint32_t subsystem_id;
     uint32_t reserved[21];
 } amdsmi_asic_info_t;
 
+/* GPU cache hierarchy info */
 typedef struct {
     uint32_t num_cache_types;
     struct {
@@ -48,13 +54,15 @@ typedef struct {
     uint32_t reserved[15];
 } amdsmi_gpu_cache_info_t;
 
+/* GPU engine utilisation — gfx, memory controller, multimedia */
 typedef struct {
-    uint32_t gfx_activity;
-    uint32_t umc_activity;
-    uint32_t mm_activity;
+    uint32_t gfx_activity;   /* graphics engine busy, 0-100 % */
+    uint32_t umc_activity;   /* memory controller busy, 0-100 % */
+    uint32_t mm_activity;    /* multimedia engine busy, 0-100 % */
     uint32_t reserved[13];
 } amdsmi_engine_usage_t;
 
+/* Per-process GPU usage info */
 typedef struct {
     char name[AMDSMI_MAX_STRING_LENGTH];
     amdsmi_process_handle_t pid;
@@ -65,9 +73,9 @@ typedef struct {
         uint32_t reserved[12];
     } engine_usage;
     struct {
-        uint64_t gtt_mem;
+        uint64_t gtt_mem;   /* system memory mapped for GPU */
         uint64_t cpu_mem;
-        uint64_t vram_mem;
+        uint64_t vram_mem;  /* GPU VRAM used by this process */
         uint32_t reserved[10];
     } memory_usage;
     char container_name[AMDSMI_MAX_STRING_LENGTH];
@@ -76,17 +84,19 @@ typedef struct {
     uint32_t reserved[10];
 } amdsmi_proc_info_t;
 
+/* Device enumeration — DRM render node, HIP/HSA IDs, UUID */
 typedef struct {
-    uint32_t drm_render;
-    uint32_t drm_card;
+    uint32_t drm_render;  /* /dev/dri/renderDN minor number */
+    uint32_t drm_card;    /* /dev/dri/cardN minor number */
     uint32_t hsa_id;
     uint32_t hip_id;
     char hip_uuid[AMDSMI_MAX_STRING_LENGTH];
 } amdsmi_enumeration_info_t;
 
+/* KFD (kernel fusion driver) info — node topology IDs */
 typedef struct {
     uint64_t kfd_id;
-    uint32_t node_id;
+    uint32_t node_id;              /* KFD node index */
     uint32_t current_partition_id;
     uint32_t reserved[12];
 } amdsmi_kfd_info_t;
@@ -232,14 +242,20 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     if (index < 0 || index >= gpu_count) return -1;
 
     amdsmi_processor_handle handle = gpu_handles[index];
-
-    /* name and compute units via asic info */
     amdsmi_asic_info_t asic = {0};
+
     if (smi_asic_fn(handle, &asic) == AMDSMI_STATUS_SUCCESS) {
         strncpy(obj->_name_storage, asic.market_name, 255);
         obj->_name_storage[255] = '\0';
         obj->sms_count = (asic.num_of_compute_units != 0xFFFFFFFF)
             ? (int)asic.num_of_compute_units : 0;
+
+        /* extract major/minor from target_graphics_version (hex gfx ID, e.g. 0x950) */
+        uint64_t v = asic.target_graphics_version;
+        if (v != 0 && v != 0xFFFFFFFFFFFFFFFFULL) {
+            obj->major = (int)((v >> 8) & 0xFF);
+            obj->minor = (int)((v >> 4) & 0xF);
+        }
     }
 
     /* UUID */
@@ -267,7 +283,7 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
         if (smi_cache_fn(handle, &cache_info) == AMDSMI_STATUS_SUCCESS) {
             for (uint32_t i = 0; i < cache_info.num_cache_types && i < AMDSMI_MAX_CACHE_TYPES; i++) {
                 if (cache_info.cache[i].cache_level == 2) {
-                    obj->l2_cache_size = (int)cache_info.cache[i].cache_size; /* in KB */
+                    obj->l2_cache_size = (int)cache_info.cache[i].cache_size * 1024; /* KB → bytes */
                     break;
                 }
             }
@@ -276,8 +292,6 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
 
     strcpy(obj->_provider_storage, "HIP");
     obj->index = index;
-    obj->major = 0;
-    obj->minor = 0;
 
     return 0;
 }

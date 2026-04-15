@@ -138,11 +138,10 @@ class Implementation(ABC):
 
 class GenuineImplementation(Implementation):
     def provider_check(self, provider: Provider) -> str | None:
-        with self.save_visible():
-            if provider == Provider.CUDA:
-                return C.checkcuda()
-            if provider == Provider.HIP:
-                return C.checkamd()
+        if provider == Provider.CUDA:
+            return C.checkcuda()
+        if provider == Provider.HIP:
+            return C.checkamd()
 
         raise ValueError(f"Invalid provider: {provider}")
 
@@ -165,20 +164,9 @@ class GenuineImplementation(Implementation):
         else:
             parsed_hip = parsed_cuda
 
-        if clear:
-            if cuda is not None:
-                del os.environ["CUDA_VISIBLE_DEVICES"]
-            if hip is not None:
-                del os.environ["HIP_VISIBLE_DEVICES"]
-
-        try:
-            yield {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
-        finally:
-            if clear:
-                if cuda is not None:
-                    os.environ["CUDA_VISIBLE_DEVICES"] = cuda
-                if hip is not None:
-                    os.environ["HIP_VISIBLE_DEVICES"] = hip
+        # No env var manipulation needed — NVML and AMD SMI always see all GPUs
+        # regardless of *_VISIBLE_DEVICES. We only parse the vars for Python-side filtering.
+        yield {Provider.CUDA: parsed_cuda, Provider.HIP: parsed_hip}
 
     def c_count(self) -> int:
         return int(C.count())
@@ -347,7 +335,13 @@ class MockImplementation(Implementation):
             index = ord - (self.cuda_count or 0)
             provider = "HIP"
 
-        return MockCObj(ord=ord, name=self.names[ord], provider=provider, index=index, **self.cobj_args)  # type: ignore[arg-type]
+        return MockCObj(
+            ord=ord,
+            name=self.names[ord],
+            provider=provider,
+            index=index,
+            **self.cobj_args,
+        )  # type: ignore[arg-type]
 
     def cuda_runtime_info(self, gpu_index: int) -> CudaRuntimeInfo | None:
         if self.cuda_count is None or gpu_index < 0 or gpu_index >= self.cuda_count:

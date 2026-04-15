@@ -11,18 +11,21 @@ class HipRuntimeInfo:
     @property
     def utilisation(self) -> int:
         from . import C
-        return int(C._amdsmi_utilisation(self.index))  # type: ignore[no-any-return]
+
+        return int(C._amdsmi_utilisation(self.index))
 
     @property
     def used_memory(self) -> int:
         """Used memory in MiB."""
         from . import C
-        return int(C._amdsmi_used_memory(self.index))  # type: ignore[no-any-return]
+
+        return int(C._amdsmi_used_memory(self.index))
 
     @property
     def pids(self) -> list[int]:
         from . import C
-        return C._amdsmi_pids(self.index)  # type: ignore[no-any-return]
+
+        return C._amdsmi_pids(self.index)
 
 
 @dataclass
@@ -60,6 +63,7 @@ def get_hip_info(gpu_idx: int) -> HipRuntimeInfo | None:
         return None
 
     from . import C
+
     try:
         count = int(C.count())
     except RuntimeError:
