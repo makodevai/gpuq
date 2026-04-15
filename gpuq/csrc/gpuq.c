@@ -156,7 +156,7 @@ gpuq_get(PyObject* self, PyObject* const* args, Py_ssize_t nargs) {
     int status = 0;
     if (gpu_id < cudaDevices) {
         status = cudaGetDeviceProps(gpu_id, obj);
-    } else {
+    } else { // gpu_id >= cudaDevices && gpu_id < cudaDevices+amdDevices
         status = amdGetDeviceProps(gpu_id - cudaDevices, obj);
     }
 
