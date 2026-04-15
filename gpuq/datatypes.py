@@ -108,10 +108,6 @@ class Properties:
         return self.cobj.sms_count  # type: ignore[no-any-return]
 
     @property
-    def l2_cache_size(self) -> int:
-        return self.cobj.l2_cache_size  # type: ignore[no-any-return]
-
-    @property
     def sm_threads(self) -> int:
         return self.cobj.sm_threads  # type: ignore[no-any-return]
 
@@ -142,6 +138,10 @@ class Properties:
     @property
     def warp_size(self) -> int:
         return self.cobj.warp_size  # type: ignore[no-any-return]
+
+    @property
+    def l2_cache_size(self) -> int:
+        return self.cobj.l2_cache_size  # type: ignore[no-any-return]
 
     @property
     def concurrent_kernels(self) -> bool:
