@@ -293,6 +293,19 @@ int amdGetDeviceProps(int index, GpuProp* obj) {
     strcpy(obj->_provider_storage, "HIP");
     obj->index = index;
 
+    /* fields not available from AMD SMI */
+    obj->sm_threads = 0;
+    obj->sm_shared_memory = 0;
+    obj->sm_registers = 0;
+    obj->sm_blocks = 0;
+    obj->block_threads = 0;
+    obj->block_shared_memory = 0;
+    obj->block_registers = 0;
+    obj->warp_size = 64;  /* AMD wavefront size is always 64 */
+    obj->concurrent_kernels = 0;
+    obj->async_engines_count = 0;
+    obj->cooperative = 0;
+
     return 0;
 }
 

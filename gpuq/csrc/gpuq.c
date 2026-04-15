@@ -35,8 +35,19 @@ static PyMemberDef GpuPropMembers[] = {
     {"major", Py_T_INT, offsetof(GpuProp, major), 0, "Model major number"},
     {"minor", Py_T_INT, offsetof(GpuProp, minor), 0, "Model minor number"},
     {"total_memory", Py_T_SIZET, offsetof(GpuProp, total_memory), 0, "Total global memory (in bytes)"},
-    {"sms_count", Py_T_INT, offsetof(GpuProp, sms_count), 0, "Number of multiprocessors / compute units"},
-    {"l2_cache_size", Py_T_INT, offsetof(GpuProp, l2_cache_size), 0, "L2 cache size (in KB)"},
+    {"sms_count", Py_T_INT, offsetof(GpuProp, sms_count), 0, "Number of multiprocessors"},
+    {"sm_threads", Py_T_INT, offsetof(GpuProp, sm_threads), 0, "Number of threads per multiprocessor"},
+    {"sm_shared_memory", Py_T_SIZET, offsetof(GpuProp, sm_shared_memory), 0, "Shared memory per multiprocessor (in bytes)"},
+    {"sm_registers", Py_T_INT, offsetof(GpuProp, sm_registers), 0, "Number of registers per multiprocessor"},
+    {"sm_blocks", Py_T_INT, offsetof(GpuProp, sm_blocks), 0, "Maximum number of blocks per multiprocessor"},
+    {"block_threads", Py_T_INT, offsetof(GpuProp, block_threads), 0, "Maximum number of threads per block"},
+    {"block_shared_memory", Py_T_SIZET, offsetof(GpuProp, block_shared_memory), 0, "Shared memory per block (in bytes)"},
+    {"block_registers", Py_T_INT, offsetof(GpuProp, block_registers), 0, "Number of registers per block"},
+    {"warp_size", Py_T_INT, offsetof(GpuProp, warp_size), 0, "Warp size"},
+    {"l2_cache_size", Py_T_INT, offsetof(GpuProp, l2_cache_size), 0, "L2 cache size"},
+    {"concurrent_kernels", Py_T_BOOL, offsetof(GpuProp, concurrent_kernels), 0, "Whether the device supports concurrent kernels"},
+    {"async_engines_count", Py_T_INT, offsetof(GpuProp, async_engines_count), 0, "Number of asynchronous engines"},
+    {"cooperative", Py_T_BOOL, offsetof(GpuProp, cooperative), 0, "Whether the device supports cooperative launches"},
     {NULL}
 };
 
@@ -78,6 +89,7 @@ gpuq_checkcuda(PyObject* self, PyObject* args) {
         return PyUnicode_FromFormat("%s:\n%s", "Could not load libnvidia-ml.so", (error_str ? error_str : "(unknown)"));
     }
     int count = 0;
+    /* fail if the count query itself errors (non-zero return) or yields no devices */
     if (cudaGetDeviceCount(&count) || count <= 0)
         return PyUnicode_InternFromString("No CUDA-capable devices detected (via NVML)");
     return PyUnicode_InternFromString("");

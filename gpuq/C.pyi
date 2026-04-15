@@ -9,6 +9,17 @@ class Properties:
     total_memory: int
     sms_count: int
     l2_cache_size: int
+    sm_threads: int
+    sm_shared_memory: int
+    sm_registers: int
+    sm_blocks: int
+    block_threads: int
+    block_shared_memory: int
+    block_registers: int
+    warp_size: int
+    concurrent_kernels: bool
+    async_engines_count: int
+    cooperative: bool
 
 def checkcuda() -> str: ...
 def checkamd() -> str: ...
