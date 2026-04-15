@@ -17,7 +17,6 @@ assert vis[0].system_index == 1 and vis[0].index == 0
 assert vis[1].system_index == 4 and vis[1].index == 1
 
 invis = [g for g in gpus if not g.is_visible]
-assert all(g.index is None for g in invis), \
-    f"Non-visible GPUs should have index=None"
+assert all(g.index is None for g in invis), f"Non-visible GPUs should have index=None"
 
 print("OK")

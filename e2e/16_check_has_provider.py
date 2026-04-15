@@ -14,7 +14,6 @@ print(f"hascuda:   {gpuq.hascuda()}")
 print(f"checkamd:  {repr(gpuq.checkamd())}")
 print(f"hasamd:    {gpuq.hasamd()}")
 
-assert gpuq.hascuda() or gpuq.hasamd(), \
-    "At least one provider should be available"
+assert gpuq.hascuda() or gpuq.hasamd(), "At least one provider should be available"
 
 print("OK")
